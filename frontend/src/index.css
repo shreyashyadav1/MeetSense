@@ -1,30 +1,30 @@
 /* ===== CSS VARIABLES ===== */
 :root {
-  --bg-base: #0f0f13;
-  --bg-surface: #1a1a24;
-  --bg-surface-2: #22222f;
-  --bg-hover: #252535;
+  --bg-base: #f4f6fb;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f1f5f9;
+  --bg-hover: #e8edf5;
 
   --accent: #6366f1;
   --accent-hover: #4f52d9;
-  --accent-light: rgba(99, 102, 241, 0.15);
-  --accent-border: rgba(99, 102, 241, 0.4);
+  --accent-light: rgba(99, 102, 241, 0.1);
+  --accent-border: rgba(99, 102, 241, 0.3);
 
-  --text-primary: #f1f1f5;
-  --text-secondary: #9898b0;
-  --text-muted: #5c5c78;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
 
-  --border: rgba(255, 255, 255, 0.07);
-  --border-stronger: rgba(255, 255, 255, 0.12);
+  --border: rgba(0, 0, 0, 0.07);
+  --border-stronger: rgba(0, 0, 0, 0.11);
 
   --success: #10b981;
   --warning: #f59e0b;
   --error: #ef4444;
   --danger: #dc2626;
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -35,7 +35,7 @@
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.6;
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -151,10 +151,11 @@ input, textarea {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(15, 15, 19, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 
 .navbar__inner {
@@ -185,7 +186,7 @@ input, textarea {
 }
 
 .navbar__logo-text {
-  background: linear-gradient(135deg, #f1f1f5 0%, #9898b0 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #6366f1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -273,6 +274,7 @@ input, textarea {
   background: var(--bg-surface);
   color: var(--text-secondary);
   border: 1px solid var(--border-stronger);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn--ghost:hover:not(:disabled) {
@@ -281,13 +283,13 @@ input, textarea {
 }
 
 .btn--danger {
-  background: rgba(220, 38, 38, 0.15);
+  background: rgba(220, 38, 38, 0.08);
   color: var(--error);
-  border: 1px solid rgba(220, 38, 38, 0.25);
+  border: 1px solid rgba(220, 38, 38, 0.2);
 }
 
 .btn--danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.25);
+  background: rgba(220, 38, 38, 0.14);
 }
 
 .btn--sm {
@@ -511,13 +513,15 @@ input, textarea {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  transition: border-color 0.15s, background 0.15s;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
   animation: slide-in-up 0.25s ease;
 }
 
 .meeting-card:hover {
-  border-color: var(--border-stronger);
-  background: var(--bg-surface-2);
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-md);
+  background: var(--bg-surface);
 }
 
 .meeting-card__icon {
@@ -639,7 +643,7 @@ input, textarea {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -726,7 +730,7 @@ input, textarea {
   width: 100%;
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  background: var(--bg-base);
+  background: var(--bg-surface-2);
   border: 1px solid var(--border-stronger);
   color: var(--text-primary);
   font-size: 14px;
@@ -814,6 +818,7 @@ input, textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .meeting-room__transcript-header {
@@ -849,7 +854,7 @@ input, textarea {
 }
 
 .transcript-panel::-webkit-scrollbar-thumb {
-  background: var(--bg-hover);
+  background: #cbd5e1;
   border-radius: 3px;
 }
 
@@ -897,7 +902,7 @@ input, textarea {
   flex-shrink: 0;
   margin-top: 2px;
   letter-spacing: 0.03em;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .transcript-group__content {
@@ -1134,9 +1139,9 @@ input, textarea {
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    var(--bg-surface-2) 0px,
-    var(--bg-hover) 40px,
-    var(--bg-surface-2) 80px
+    #e2e8f0 0px,
+    #f1f5f9 40px,
+    #e2e8f0 80px
   );
   background-size: 400px 100%;
   animation: skeleton-shimmer 1.4s ease-in-out infinite;
@@ -1174,10 +1179,10 @@ input, textarea {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: none;
   background: var(--bg-surface-2);
   color: var(--text-secondary);
   border: 2px solid var(--border-stronger);
+  box-shadow: var(--shadow-sm);
   transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
   flex-shrink: 0;
   cursor: pointer;
@@ -1327,7 +1332,7 @@ input, textarea {
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.8rem;
   white-space: pre-wrap;
-  background: var(--bg-base);
+  background: var(--bg-surface-2);
   border-radius: 0.5rem;
   padding: 1rem;
   padding-top: 2.5rem;
