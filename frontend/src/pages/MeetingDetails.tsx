@@ -6,6 +6,7 @@ import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { MeetingStatusBadge } from '../components/StatusBadge';
 import { getMeeting, getTranscript } from '../services/api';
+import { InsightsPanel } from '../components/InsightsPanel';
 import type { Meeting, TranscriptSegment } from '../types';
 
 function formatDuration(startedAt: string, endedAt?: string): string {
@@ -125,25 +126,18 @@ export const MeetingDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* AI Insights placeholder */}
+          {/* AI Insights */}
           <aside className="meeting-details__insights">
             <div className="insights-card">
               <div className="insights-card__header">
                 <Sparkles size={18} />
                 <h3 className="insights-card__title">AI Insights</h3>
               </div>
-              <div className="insights-card__placeholder">
-                <div className="insights-card__badge">Phase 3</div>
-                <p className="insights-card__desc">
-                  AI-generated summaries, action items, and key decisions will appear here
-                  once Phase 3 is complete.
-                </p>
-                <div className="insights-card__preview">
-                  <div className="insights-skeleton" />
-                  <div className="insights-skeleton insights-skeleton--short" />
-                  <div className="insights-skeleton" />
-                  <div className="insights-skeleton insights-skeleton--shorter" />
-                </div>
+              <div style={{ padding: '1rem' }}>
+                <InsightsPanel
+                  meetingId={meetingId}
+                  hasTranscript={segments.length > 0}
+                />
               </div>
             </div>
           </aside>

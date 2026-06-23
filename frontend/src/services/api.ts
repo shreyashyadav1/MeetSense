@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Meeting, TranscriptSegment } from '../types';
+import type { Meeting, TranscriptSegment, MeetingInsights } from '../types';
 
 const client = axios.create({
   baseURL: 'http://localhost:8000',
@@ -30,5 +30,15 @@ export async function endMeeting(id: string): Promise<Meeting> {
 
 export async function getTranscript(id: string): Promise<TranscriptSegment[]> {
   const response = await client.get<TranscriptSegment[]>(`/api/meetings/${id}/transcript`);
+  return response.data;
+}
+
+export async function summarizeMeeting(id: string): Promise<MeetingInsights> {
+  const response = await client.post<MeetingInsights>(`/api/meetings/${id}/summarize`);
+  return response.data;
+}
+
+export async function getInsights(id: string): Promise<MeetingInsights> {
+  const response = await client.get<MeetingInsights>(`/api/meetings/${id}/insights`);
   return response.data;
 }

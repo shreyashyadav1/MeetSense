@@ -29,3 +29,14 @@ class TranscriptSegment(BaseModel):
 class WebSocketMessage(BaseModel):
     type: str  # "transcript" | "status" | "error"
     data: dict
+
+
+class MeetingInsights(BaseModel):
+    id: str
+    meeting_id: str
+    summary: str
+    action_items: list[str]
+    decisions: list[str]
+    questions_raised: list[str]
+    follow_up_email: str
+    generated_at: datetime

@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from app.models.schemas import Meeting, TranscriptSegment
+from app.models.schemas import Meeting, MeetingInsights, TranscriptSegment
 
 
 class MeetingStore:
@@ -15,6 +15,7 @@ class MeetingStore:
     def __init__(self) -> None:
         self._meetings: Dict[str, Meeting] = {}
         self._transcripts: Dict[str, List[TranscriptSegment]] = {}
+        self._insights: Dict[str, MeetingInsights] = {}
         self._lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
@@ -84,6 +85,21 @@ class MeetingStore:
         """Return all transcript segments for a meeting, in order."""
         async with self._lock:
             return list(self._transcripts.get(meeting_id, []))
+
+    # ------------------------------------------------------------------
+    # Insights operations
+    # ------------------------------------------------------------------
+
+    async def save_insights(self, insights: MeetingInsights) -> MeetingInsights:
+        """Persist AI-generated insights for a meeting."""
+        async with self._lock:
+            self._insights[insights.meeting_id] = insights
+        return insights
+
+    async def get_insights(self, meeting_id: str) -> Optional[MeetingInsights]:
+        """Return stored insights for a meeting, or None if not yet generated."""
+        async with self._lock:
+            return self._insights.get(meeting_id)
 
 
 # Module-level singleton — imported by routers and the WebSocket handler.

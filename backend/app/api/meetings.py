@@ -1,8 +1,13 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, status
 from typing import List
 
-from app.models.schemas import Meeting, CreateMeetingRequest, TranscriptSegment
+from app.models.schemas import Meeting, CreateMeetingRequest, MeetingInsights, TranscriptSegment
 from app.services.meeting_store import meeting_store
+from app.services.ai_service import generate_insights
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -109,3 +114,101 @@ async def get_transcript(meeting_id: str) -> List[TranscriptSegment]:
             detail=f"Meeting '{meeting_id}' not found.",
         )
     return await meeting_store.get_segments(meeting_id)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/meetings/{meeting_id}/summarize — generate AI insights
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/meetings/{meeting_id}/summarize",
+    response_model=MeetingInsights,
+    summary="Generate AI insights for a meeting (idempotent)",
+)
+async def summarize_meeting(meeting_id: str) -> MeetingInsights:
+    """
+    Generate AI-powered insights (summary, action items, decisions, questions,
+    follow-up email) from the meeting transcript using Groq.
+
+    - Returns 200 with cached insights if they have already been generated.
+    - Returns 400 if no transcript segments exist yet.
+    - Returns 503 if GROQ_API_KEY is not configured.
+    - Returns 502 if the Groq API call fails.
+    """
+    meeting = await meeting_store.get_meeting(meeting_id)
+    if meeting is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Meeting '{meeting_id}' not found.",
+        )
+
+    # Idempotent: return cached insights if already generated
+    existing = await meeting_store.get_insights(meeting_id)
+    if existing is not None:
+        return existing
+
+    segments = await meeting_store.get_segments(meeting_id)
+    final_segments = [s for s in segments if s.is_final]
+
+    if not final_segments:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No transcript available to summarize.",
+        )
+
+    try:
+        insights = await generate_insights(
+            meeting_id=meeting_id,
+            meeting_title=meeting.title,
+            segments=final_segments,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        if "GROQ_API_KEY" in msg:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service not configured. Set GROQ_API_KEY in .env",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg,
+        )
+    except Exception as exc:
+        logger.error("[AI] Groq API error for meeting %s: %s", meeting_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"AI service error: {exc}",
+        )
+
+    saved = await meeting_store.save_insights(insights)
+    return saved
+
+
+# ---------------------------------------------------------------------------
+# GET /api/meetings/{meeting_id}/insights — retrieve saved AI insights
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/meetings/{meeting_id}/insights",
+    response_model=MeetingInsights,
+    summary="Get saved AI insights for a meeting",
+)
+async def get_insights(meeting_id: str) -> MeetingInsights:
+    """
+    Return previously generated insights for the given meeting.
+    Returns 404 if the meeting does not exist or insights have not been generated yet.
+    """
+    meeting = await meeting_store.get_meeting(meeting_id)
+    if meeting is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Meeting '{meeting_id}' not found.",
+        )
+
+    insights = await meeting_store.get_insights(meeting_id)
+    if insights is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No insights found for meeting '{meeting_id}'. Call POST /summarize first.",
+        )
+    return insights

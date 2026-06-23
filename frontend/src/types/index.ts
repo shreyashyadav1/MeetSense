@@ -29,3 +29,14 @@ export type WSMessage =
   | { type: 'error'; data: { message: string } };
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+export interface MeetingInsights {
+  id: string;
+  meeting_id: string;
+  summary: string;
+  action_items: string[];
+  decisions: string[];
+  questions_raised: string[];
+  follow_up_email: string;
+  generated_at: string;
+}
