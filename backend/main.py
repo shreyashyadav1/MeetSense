@@ -51,8 +51,11 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     async def startup():
-        await create_tables()
-        logger.info("Database tables ready")
+        try:
+            await create_tables()
+            logger.info("Database tables ready")
+        except Exception as exc:
+            logger.warning("DB init failed (will retry on first request): %s", exc)
 
     @app.on_event("shutdown")
     async def shutdown():
