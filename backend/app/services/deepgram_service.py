@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 import websockets
 from typing import AsyncGenerator, Optional
@@ -7,17 +8,19 @@ from typing import AsyncGenerator, Optional
 from app.models.schemas import TranscriptSegment
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
+# No encoding/sample_rate/channels — let Deepgram auto-detect from the WebM
+# container that MediaRecorder produces (audio/webm;codecs=opus).
 DEEPGRAM_URL = (
     "wss://api.deepgram.com/v1/listen"
     "?model=nova-2"
     "&language=en-US"
-    "&encoding=opus"
-    "&sample_rate=48000"
-    "&channels=1"
     "&punctuate=true"
     "&interim_results=true"
     "&utterance_end_ms=1000"
     "&vad_events=true"
+    "&diarize=true"
 )
 
 
@@ -51,9 +54,11 @@ class DeepgramStreamer:
 
     async def connect(self):
         headers = {"Authorization": f"Token {settings.deepgram_api_key}"}
+        logger.info("[Deepgram] Connecting to %s", DEEPGRAM_URL)
         self._dg_ws = await websockets.connect(DEEPGRAM_URL, extra_headers=headers)
         import time
         self._start_time = time.time()
+        logger.info("[Deepgram] Connected for meeting %s", self.meeting_id)
         self._receiver_task = asyncio.create_task(self._receive_loop())
 
     async def send_audio(self, chunk: bytes):
@@ -79,6 +84,15 @@ class DeepgramStreamer:
             async for raw in self._dg_ws:
                 msg = json.loads(raw)
                 msg_type = msg.get("type", "")
+                logger.debug("[Deepgram] received type=%s", msg_type)
+
+                if msg_type == "Error":
+                    logger.error("[Deepgram] Error from API: %s", msg)
+                    continue
+
+                if msg_type == "Metadata":
+                    logger.info("[Deepgram] Metadata: %s", msg)
+                    continue
 
                 if msg_type == "Results":
                     channel = msg.get("channel", {})
@@ -123,6 +137,7 @@ class DeepgramStreamer:
                         await self._transcript_queue.put(segment)
 
         except Exception as e:
+            logger.error("[Deepgram] _receive_loop error: %s", e, exc_info=True)
             await self._transcript_queue.put(None)
 
     def _get_speaker(self, msg: dict, count: int) -> str:
