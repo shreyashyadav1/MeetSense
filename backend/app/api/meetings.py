@@ -17,6 +17,64 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 # ---------------------------------------------------------------------------
+# POST /api/demo — seed a realistic meeting for screenshots (temporary)
+# ---------------------------------------------------------------------------
+
+@router.post("/demo", response_model=Meeting, status_code=status.HTTP_201_CREATED)
+async def create_demo_meeting() -> Meeting:
+    import uuid
+    from datetime import datetime, timezone, timedelta
+
+    meeting = await meeting_store.create_meeting(title="Engineering Standup — Sprint 24")
+
+    base = datetime.now(timezone.utc)
+    segments_data = [
+        ("Speaker 1", "Good morning everyone, let's get started with the standup.", 2.1, 0.98),
+        ("Speaker 2", "Sure. Yesterday I finished the authentication service refactor and pushed it to the staging branch.", 8.4, 0.97),
+        ("Speaker 1", "Great. Any blockers on that?", 22.1, 0.99),
+        ("Speaker 2", "One thing — the token refresh logic needs a review from the backend team before we can merge.", 26.8, 0.96),
+        ("Speaker 3", "I can take a look this afternoon. I should have the API rate limiting done by noon so I'll have time.", 38.2, 0.95),
+        ("Speaker 1", "Perfect. Can you put a PR review request on Slack so it doesn't get lost?", 51.5, 0.98),
+        ("Speaker 2", "Will do.", 61.0, 0.99),
+        ("Speaker 3", "Also, I wanted to bring up the database migration for the new reporting schema. We agreed to run it Friday night but I want to confirm everyone's available for the rollout window.", 64.7, 0.94),
+        ("Speaker 1", "Friday at 10pm works for me. Let's make that the official deployment window.", 88.3, 0.97),
+        ("Speaker 4", "Agreed. I'll update the deployment doc and notify the on-call engineer.", 98.6, 0.96),
+        ("Speaker 3", "One more thing — should we move the weekly demo from Thursday to Wednesday this sprint? The product team has a conflict.", 108.0, 0.95),
+        ("Speaker 1", "Yes, let's move it. Wednesday 2pm. I'll send a calendar update after this call.", 122.5, 0.98),
+        ("Speaker 4", "Sounds good. That's all from me.", 133.0, 0.99),
+        ("Speaker 1", "Alright, anything else before we wrap up? No? Great — talk to you all tomorrow.", 138.2, 0.97),
+    ]
+
+    for speaker, text, ts, conf in segments_data:
+        seg = TranscriptSegment(
+            id=str(uuid.uuid4()),
+            meeting_id=meeting.id,
+            speaker=speaker,
+            text=text,
+            timestamp=ts,
+            confidence=conf,
+            is_final=True,
+        )
+        await meeting_store.add_segment(seg)
+
+    await meeting_store.end_meeting(meeting.id)
+
+    final_segments = [
+        TranscriptSegment(id=str(uuid.uuid4()), meeting_id=meeting.id,
+                          speaker=s, text=t, timestamp=ts, confidence=c, is_final=True)
+        for s, t, ts, c in segments_data
+    ]
+    insights = await generate_insights(
+        meeting_id=meeting.id,
+        meeting_title="Engineering Standup — Sprint 24",
+        segments=final_segments,
+    )
+    await meeting_store.save_insights(insights)
+
+    return await meeting_store.get_meeting(meeting.id)
+
+
+# ---------------------------------------------------------------------------
 # POST /api/meetings — create a new meeting
 # ---------------------------------------------------------------------------
 
