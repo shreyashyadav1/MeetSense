@@ -23,6 +23,7 @@ class TranscriptSegment(BaseModel):
     text: str
     timestamp: float  # seconds from meeting start
     confidence: float
+    is_final: bool = True
 
 
 class WebSocketMessage(BaseModel):

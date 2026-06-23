@@ -4,24 +4,37 @@ import type { TranscriptSegment, WSMessage, ConnectionStatus } from '../types';
 
 interface UseMeetingSocketResult {
   segments: TranscriptSegment[];
+  interimSegment: TranscriptSegment | null;
   isConnected: boolean;
   connectionStatus: ConnectionStatus;
+  sendAudio: (chunk: Blob) => void;
 }
 
 export function useMeetingSocket(meetingId: string): UseMeetingSocketResult {
   const [segments, setSegments] = useState<TranscriptSegment[]>([]);
+  const [interimSegment, setInterimSegment] = useState<TranscriptSegment | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
   const socketRef = useRef<MeetingSocket | null>(null);
 
   const handleMessage = useCallback((msg: WSMessage) => {
     switch (msg.type) {
-      case 'transcript':
+      case 'transcript': {
         setConnectionStatus('connected');
-        setSegments((prev) => {
-          if (prev.some((s) => s.id === msg.data.id)) return prev;
-          return [...prev, msg.data];
-        });
+        const seg = msg.data;
+
+        if (seg.is_final === false) {
+          // Interim result — update the in-progress ghost entry
+          setInterimSegment(seg);
+        } else {
+          // Final (or legacy without the flag) — commit to the segment list
+          setSegments((prev) => {
+            if (prev.some((s) => s.id === seg.id)) return prev;
+            return [...prev, seg];
+          });
+          setInterimSegment(null);
+        }
         break;
+      }
 
       case 'status':
         if (msg.data.status === 'connected') {
@@ -50,6 +63,7 @@ export function useMeetingSocket(meetingId: string): UseMeetingSocketResult {
 
     setConnectionStatus('connecting');
     setSegments([]);
+    setInterimSegment(null);
 
     const socket = new MeetingSocket(meetingId, handleMessage);
     socketRef.current = socket;
@@ -73,9 +87,15 @@ export function useMeetingSocket(meetingId: string): UseMeetingSocketResult {
     };
   }, [meetingId, handleMessage]);
 
+  const sendAudio = useCallback((chunk: Blob) => {
+    socketRef.current?.sendBinary(chunk);
+  }, []);
+
   return {
     segments,
+    interimSegment,
     isConnected: connectionStatus === 'connected',
     connectionStatus,
+    sendAudio,
   };
 }

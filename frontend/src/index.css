@@ -1150,3 +1150,124 @@ input, textarea {
 .insights-skeleton--shorter {
   width: 50%;
 }
+
+/* ===== MIC SECTION ===== */
+.mic-section {
+  flex-shrink: 0;
+}
+
+.mic-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* Mic button */
+.mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-surface-2);
+  color: var(--text-secondary);
+  border: 2px solid var(--border-stronger);
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.mic-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.mic-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mic-btn.recording {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+  border-color: rgba(239, 68, 68, 0.5);
+  animation: pulse-red 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Mic info: level bar + status text */
+.mic-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Audio level bar */
+.audio-level-bar {
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.audio-level-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--success) 100%);
+  border-radius: 2px;
+  transition: width 0.1s ease;
+  min-width: 0;
+}
+
+.mic-status-text {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ===== INTERIM TRANSCRIPT ===== */
+.transcript-group.interim {
+  opacity: 0.5;
+}
+
+.interim-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.interim-dots span {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: listening-dot 1.4s ease-in-out infinite;
+}
+
+.interim-dots span:nth-child(1) { animation-delay: 0s; }
+.interim-dots span:nth-child(2) { animation-delay: 0.2s; }
+.interim-dots span:nth-child(3) { animation-delay: 0.4s; }

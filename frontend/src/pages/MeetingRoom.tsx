@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Square, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { Square, Clock, Loader2, AlertCircle, Mic, MicOff } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { StatusBadge } from '../components/StatusBadge';
 import { useMeetingSocket } from '../hooks/useMeetingSocket';
+import { useMicrophone } from '../hooks/useMicrophone';
 import { getMeeting, endMeeting } from '../services/api';
 import type { Meeting } from '../types';
 
@@ -45,7 +46,11 @@ export const MeetingRoom: React.FC = () => {
   const [meetingError, setMeetingError] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
 
-  const { segments, connectionStatus } = useMeetingSocket(meetingId);
+  const { segments, interimSegment, connectionStatus, sendAudio } = useMeetingSocket(meetingId);
+  const { status: micStatus, startRecording, stopRecording, audioLevel } = useMicrophone({
+    onChunk: sendAudio,
+  });
+
   const duration = useTimer(meeting?.started_at);
 
   // Fetch meeting metadata
@@ -69,6 +74,7 @@ export const MeetingRoom: React.FC = () => {
     if (!meetingId || isEnding) return;
 
     setIsEnding(true);
+    stopRecording();
     try {
       await endMeeting(meetingId);
       navigate(`/meeting/${meetingId}`);
@@ -76,7 +82,15 @@ export const MeetingRoom: React.FC = () => {
       console.error('[MeetingRoom] Failed to end meeting:', err);
       setIsEnding(false);
     }
-  }, [meetingId, isEnding, navigate]);
+  }, [meetingId, isEnding, navigate, stopRecording]);
+
+  const handleMicToggle = useCallback(() => {
+    if (micStatus === 'active') {
+      stopRecording();
+    } else if (micStatus === 'idle' || micStatus === 'error') {
+      startRecording();
+    }
+  }, [micStatus, startRecording, stopRecording]);
 
   if (isLoadingMeeting) {
     return (
@@ -103,6 +117,15 @@ export const MeetingRoom: React.FC = () => {
       </Layout>
     );
   }
+
+  const isRecording = micStatus === 'active';
+  const micUnsupported = micStatus === 'unsupported';
+
+  let micStatusText = 'Click to start recording';
+  if (micStatus === 'requesting') micStatusText = 'Requesting microphone...';
+  else if (micStatus === 'active') micStatusText = 'Recording...';
+  else if (micStatus === 'error') micStatusText = 'Microphone error — click to retry';
+  else if (micStatus === 'unsupported') micStatusText = 'Microphone not supported in this browser';
 
   return (
     <Layout activeMeetingId={meetingId}>
@@ -144,6 +167,38 @@ export const MeetingRoom: React.FC = () => {
           </div>
         </div>
 
+        {/* Microphone control section */}
+        <div className="mic-section">
+          {micUnsupported ? (
+            <div className="alert alert--warning">
+              <MicOff size={16} />
+              Microphone not supported in this browser
+            </div>
+          ) : (
+            <div className="mic-controls">
+              <button
+                className={`mic-btn${isRecording ? ' recording' : ''}`}
+                onClick={handleMicToggle}
+                disabled={micStatus === 'requesting'}
+                aria-label={isRecording ? 'Stop recording' : 'Start recording'}
+                title={micStatusText}
+              >
+                {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
+              </button>
+
+              <div className="mic-info">
+                <div className="audio-level-bar">
+                  <div
+                    className="audio-level-fill"
+                    style={{ width: `${audioLevel}%` }}
+                  />
+                </div>
+                <span className="mic-status-text">{micStatusText}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Transcript area */}
         <div className="meeting-room__transcript-wrapper">
           <div className="meeting-room__transcript-header">
@@ -154,7 +209,7 @@ export const MeetingRoom: React.FC = () => {
               </div>
             )}
           </div>
-          <TranscriptPanel segments={segments} isLive={true} />
+          <TranscriptPanel segments={segments} isLive={true} interimSegment={interimSegment} />
         </div>
       </div>
     </Layout>

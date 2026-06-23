@@ -13,6 +13,13 @@ export interface TranscriptSegment {
   text: string;
   timestamp: number;
   confidence: number;
+  is_final?: boolean;
+}
+
+export type MicrophoneStatus = 'idle' | 'requesting' | 'active' | 'error' | 'unsupported';
+
+export interface AudioLevel {
+  level: number; // 0-100
 }
 
 export type WSMessage =

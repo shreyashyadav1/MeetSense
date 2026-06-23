@@ -32,6 +32,7 @@ export class MeetingSocket {
 
     try {
       this.socket = new WebSocket(url);
+      this.socket.binaryType = 'arraybuffer';
     } catch (err) {
       console.error('[MeetingSocket] Failed to create WebSocket:', err);
       this._scheduleReconnect();
@@ -99,6 +100,14 @@ export class MeetingSocket {
   send(msg: object): void {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(msg));
+    }
+  }
+
+  sendBinary(blob: Blob): void {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      blob.arrayBuffer().then((buffer) => {
+        this.socket?.send(buffer);
+      });
     }
   }
 
