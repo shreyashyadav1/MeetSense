@@ -246,11 +246,11 @@ docker compose down
 ### Dashboard
 ![Dashboard](docs/screenshots/dashboard.png)
 
-### Meeting Room (Active)
-![Meeting Room](docs/screenshots/meeting-room.png)
-
-### Meeting Detail with AI Insights Panel
+### Live Transcript with AI Insights Panel
 ![Meeting Detail](docs/screenshots/meeting-detail.png)
+
+### AI Insights — Summary, Action Items, Decisions
+![AI Insights](docs/screenshots/ai-insights.png)
 
 ### Mobile View
 ![Mobile](docs/screenshots/mobile.png)
