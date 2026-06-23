@@ -4,6 +4,8 @@ A full-stack AI-powered meeting assistant that captures live speech, transcribes
 
 Built as a portfolio project demonstrating production-grade full-stack engineering across real-time WebSockets, streaming speech-to-text, async Python, LLM-driven structured output, and containerized deployment.
 
+**Live demo:** https://meet-sense.vercel.app
+
 ---
 
 ## Table of Contents
@@ -45,7 +47,7 @@ Built as a portfolio project demonstrating production-grade full-stack engineeri
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, TypeScript, Vite, React Router v6, Axios |
-| Styling | CSS custom properties, dark theme |
+| Styling | CSS custom properties, light theme |
 | Backend | Python 3.11, FastAPI, uvicorn (hot-reload) |
 | Real-time | WebSockets — browser to FastAPI to Deepgram |
 | Speech-to-Text | Deepgram nova-2, streaming WebSocket, WebM/Opus via MediaRecorder API |
@@ -241,7 +243,17 @@ docker compose down
 
 ## Screenshots
 
-<!-- Add screenshots here -->
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Meeting Room (Active)
+![Meeting Room](docs/screenshots/meeting-room.png)
+
+### Meeting Detail with AI Insights Panel
+![Meeting Detail](docs/screenshots/meeting-detail.png)
+
+### Mobile View
+![Mobile](docs/screenshots/mobile.png)
 
 ---
 
