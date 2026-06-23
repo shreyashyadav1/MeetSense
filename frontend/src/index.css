@@ -1354,3 +1354,210 @@ input, textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== RESPONSIVE — TABLET (≤768px) ===== */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px 16px;
+  }
+
+  /* Dashboard */
+  .dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .dashboard__title {
+    font-size: 22px;
+  }
+
+  .dashboard__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Meeting Room */
+  .meeting-room {
+    height: auto;
+    min-height: unset;
+  }
+
+  .meeting-room__topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .meeting-room__controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .meeting-room__title {
+    font-size: 18px;
+  }
+
+  .meeting-room__transcript-wrapper {
+    min-height: 360px;
+    max-height: 60vh;
+  }
+
+  /* Mic controls */
+  .mic-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  /* Meeting Details */
+  .meeting-details__title {
+    font-size: 20px;
+  }
+
+  .meeting-details__meta {
+    gap: 12px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* Insights panel */
+  .insight-card {
+    padding: 1rem;
+  }
+}
+
+/* ===== RESPONSIVE — MOBILE (≤480px) ===== */
+@media (max-width: 480px) {
+  :root {
+    font-size: 14px;
+  }
+
+  .main-content {
+    padding: 16px 12px;
+  }
+
+  /* Navbar */
+  .navbar__inner {
+    padding: 0 16px;
+    height: 54px;
+  }
+
+  .navbar__logo-text {
+    font-size: 15px;
+  }
+
+  .navbar__link {
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+
+  /* Dashboard */
+  .dashboard__title {
+    font-size: 20px;
+  }
+
+  .dashboard__subtitle {
+    font-size: 13px;
+  }
+
+  /* Meeting card */
+  .meeting-card {
+    padding: 13px 14px;
+    gap: 12px;
+  }
+
+  .meeting-card__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .meeting-card__title {
+    font-size: 14px;
+  }
+
+  .meeting-card__btn {
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 48px 20px;
+  }
+
+  .empty-state__title {
+    font-size: 17px;
+  }
+
+  /* Meeting room */
+  .meeting-room {
+    gap: 16px;
+  }
+
+  .meeting-room__title {
+    font-size: 17px;
+  }
+
+  .meeting-room__transcript-wrapper {
+    min-height: 300px;
+    max-height: 55vh;
+  }
+
+  /* Transcript */
+  .transcript-group {
+    gap: 10px;
+    padding: 8px 0;
+  }
+
+  .transcript-group__avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 10px;
+  }
+
+  .transcript-group__text {
+    font-size: 13.5px;
+  }
+
+  /* Mic section */
+  .mic-controls {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .mic-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Meeting details */
+  .meeting-details__title {
+    font-size: 18px;
+  }
+
+  .meta-item {
+    font-size: 12px;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* Section title */
+  .section-title {
+    font-size: 14px;
+  }
+}
