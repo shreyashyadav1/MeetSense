@@ -30,3 +30,4 @@ dist/
 .idea/
 *.swp
 *.swo
+.vercel
