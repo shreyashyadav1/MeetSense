@@ -4,7 +4,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.services.meeting_store import meeting_store
+from app.services.pg_meeting_store import pg_meeting_store as meeting_store
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

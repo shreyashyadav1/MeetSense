@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List
 
 from app.models.schemas import Meeting, CreateMeetingRequest, MeetingInsights, TranscriptSegment
-from app.services.meeting_store import meeting_store
+from app.services.pg_meeting_store import pg_meeting_store as meeting_store
 from app.services.ai_service import generate_insights
 
 logger = logging.getLogger(__name__)

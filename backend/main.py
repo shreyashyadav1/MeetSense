@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.meetings import router as meetings_router
 from app.api.websocket import router as websocket_router
+from app.db.init_db import create_tables
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -25,14 +26,16 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     app = FastAPI(
         title="MeetSense AI",
-        description=(
-            "Real-time meeting transcription and AI insights platform. "
-            "Phase 1 — in-memory store with mock transcript streaming."
-        ),
-        version="0.1.0",
+        description="Real-time meeting transcription and AI insights platform.",
+        version="0.2.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    @app.on_event("startup")
+    async def startup():
+        await create_tables()
+        logger.info("Database tables ready")
 
     # -----------------------------------------------------------------------
     # CORS — allow the Vite dev server (and common localhost variants)
