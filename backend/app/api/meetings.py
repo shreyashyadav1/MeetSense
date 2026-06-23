@@ -1,7 +1,9 @@
 import logging
-
-from fastapi import APIRouter, HTTPException, status
 from typing import List
+
+from fastapi import APIRouter, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.models.schemas import Meeting, CreateMeetingRequest, MeetingInsights, TranscriptSegment
 from app.services.pg_meeting_store import pg_meeting_store as meeting_store
@@ -10,6 +12,8 @@ from app.services.ai_service import generate_insights
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ---------------------------------------------------------------------------
@@ -22,7 +26,8 @@ router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Create a new meeting",
 )
-async def create_meeting(body: CreateMeetingRequest) -> Meeting:
+@limiter.limit("20/minute")
+async def create_meeting(request: Request, body: CreateMeetingRequest) -> Meeting:
     """
     Create a new meeting in *active* status.
     Returns the full Meeting object including the generated id and started_at.
@@ -125,7 +130,8 @@ async def get_transcript(meeting_id: str) -> List[TranscriptSegment]:
     response_model=MeetingInsights,
     summary="Generate AI insights for a meeting (idempotent)",
 )
-async def summarize_meeting(meeting_id: str) -> MeetingInsights:
+@limiter.limit("5/minute")
+async def summarize_meeting(request: Request, meeting_id: str) -> MeetingInsights:
     """
     Generate AI-powered insights (summary, action items, decisions, questions,
     follow-up email) from the meeting transcript using Groq.

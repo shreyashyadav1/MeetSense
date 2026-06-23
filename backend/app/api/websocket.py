@@ -5,10 +5,85 @@ import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from app.services.pg_meeting_store import pg_meeting_store as meeting_store
+from app.services.redis_service import publish_segment, subscribe_segments
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _publish_task(transcript_iter, meeting_id: str, stop_event: asyncio.Event) -> None:
+    """Reads transcript segments and publishes each to Redis."""
+    try:
+        async for segment in transcript_iter:
+            if stop_event.is_set():
+                logger.info("Stop event set — halting publish task for %s", meeting_id)
+                return
+            # Only persist final segments
+            if segment.is_final:
+                await meeting_store.add_segment(segment)
+            await publish_segment(
+                meeting_id,
+                json.dumps({"type": "transcript", "data": segment.model_dump()}),
+            )
+
+        # Stream finished naturally — publish a status message
+        if not stop_event.is_set():
+            await publish_segment(
+                meeting_id,
+                json.dumps({
+                    "type": "status",
+                    "data": {
+                        "status": "stream_complete",
+                        "meeting_id": meeting_id,
+                        "message": "Transcription stream has finished.",
+                    },
+                }),
+            )
+    except asyncio.CancelledError:
+        logger.info("Publish task cancelled for meeting %s", meeting_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error in publish task for %s: %s", meeting_id, exc)
+        # Publish the error so the subscribe task can forward it to the client
+        try:
+            await publish_segment(
+                meeting_id,
+                json.dumps({
+                    "type": "error",
+                    "data": {
+                        "message": "Internal error during transcription stream.",
+                        "detail": str(exc),
+                    },
+                }),
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+
+async def _subscribe_task(
+    websocket: WebSocket,
+    meeting_id: str,
+    stop_event: asyncio.Event,
+) -> None:
+    """Reads from Redis pub/sub and forwards messages to the WebSocket client."""
+    ps = await subscribe_segments(meeting_id)
+    try:
+        async for message in ps.listen():
+            if stop_event.is_set():
+                break
+            if message["type"] == "message":
+                try:
+                    await websocket.send_text(message["data"])
+                except (WebSocketDisconnect, RuntimeError):
+                    logger.info("WebSocket closed during subscribe task for meeting %s", meeting_id)
+                    break
+    except asyncio.CancelledError:
+        logger.info("Subscribe task cancelled for meeting %s", meeting_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error in subscribe task for %s: %s", meeting_id, exc)
+    finally:
+        await ps.unsubscribe()
+        await ps.aclose()
 
 
 @router.websocket("/meetings/{meeting_id}/stream")
@@ -65,55 +140,13 @@ async def meeting_stream(websocket: WebSocket, meeting_id: str):
 
     stop_event = asyncio.Event()
 
-    async def send_transcripts():
-        try:
-            async for segment in transcript_iter:
-                if stop_event.is_set():
-                    logger.info("Stop event set — halting transcript stream for %s", meeting_id)
-                    return
-                # Only persist final segments
-                if segment.is_final:
-                    await meeting_store.add_segment(segment)
-                try:
-                    await websocket.send_text(json.dumps({
-                        "type": "transcript",
-                        "data": segment.model_dump(),
-                    }))
-                except (WebSocketDisconnect, RuntimeError):
-                    logger.info("WebSocket closed during stream for meeting %s", meeting_id)
-                    return
-
-            # Stream finished naturally — notify the client
-            if not stop_event.is_set():
-                try:
-                    await websocket.send_text(json.dumps({
-                        "type": "status",
-                        "data": {
-                            "status": "stream_complete",
-                            "meeting_id": meeting_id,
-                            "message": "Transcription stream has finished.",
-                        },
-                    }))
-                except (WebSocketDisconnect, RuntimeError):
-                    pass
-        except asyncio.CancelledError:
-            logger.info("Transcript stream task cancelled for meeting %s", meeting_id)
-        except Exception as exc:  # noqa: BLE001
-            logger.exception("Unexpected error in transcript stream for %s: %s", meeting_id, exc)
-            try:
-                await websocket.send_text(json.dumps({
-                    "type": "error",
-                    "data": {
-                        "message": "Internal error during transcription stream.",
-                        "detail": str(exc),
-                    },
-                }))
-            except (WebSocketDisconnect, RuntimeError):
-                pass
-
-    transcript_task = asyncio.create_task(
-        send_transcripts(),
-        name=f"stream-{meeting_id}",
+    publish_task = asyncio.create_task(
+        _publish_task(transcript_iter, meeting_id, stop_event),
+        name=f"publish-{meeting_id}",
+    )
+    subscribe_task = asyncio.create_task(
+        _subscribe_task(websocket, meeting_id, stop_event),
+        name=f"subscribe-{meeting_id}",
     )
 
     try:
@@ -164,12 +197,13 @@ async def meeting_stream(websocket: WebSocket, meeting_id: str):
         logger.exception("Unhandled WebSocket error for meeting %s: %s", meeting_id, exc)
     finally:
         stop_event.set()
-        if not transcript_task.done():
-            transcript_task.cancel()
-            try:
-                await transcript_task
-            except asyncio.CancelledError:
-                pass
+        for task in (publish_task, subscribe_task):
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
         if streamer:
             await streamer.close()
         logger.info("WebSocket handler cleaned up for meeting %s", meeting_id)

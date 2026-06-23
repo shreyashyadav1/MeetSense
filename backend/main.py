@@ -3,10 +3,14 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.api.meetings import router as meetings_router
 from app.api.websocket import router as websocket_router
 from app.db.init_db import create_tables
+from app.services.redis_service import close_redis
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -20,22 +24,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Rate limiter (shared instance — imported by routers)
+# ---------------------------------------------------------------------------
+
+limiter = Limiter(key_func=get_remote_address)
+
+# ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="MeetSense AI",
         description="Real-time meeting transcription and AI insights platform.",
-        version="0.2.0",
+        version="0.3.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    # -----------------------------------------------------------------------
+    # Rate limiting
+    # -----------------------------------------------------------------------
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
     @app.on_event("startup")
     async def startup():
         await create_tables()
         logger.info("Database tables ready")
+
+    @app.on_event("shutdown")
+    async def shutdown():
+        await close_redis()
+        logger.info("Redis connection closed")
 
     # -----------------------------------------------------------------------
     # CORS — allow the Vite dev server (and common localhost variants)
