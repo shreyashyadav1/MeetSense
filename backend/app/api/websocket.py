@@ -4,7 +4,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.services.pg_meeting_store import pg_meeting_store as meeting_store
+from app.services.smart_meeting_store import smart_meeting_store as meeting_store
 from app.services.redis_service import publish_segment, subscribe_segments
 from app.core.config import settings
 

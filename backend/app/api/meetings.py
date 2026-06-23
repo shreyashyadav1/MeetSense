@@ -6,7 +6,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.models.schemas import Meeting, CreateMeetingRequest, MeetingInsights, TranscriptSegment
-from app.services.pg_meeting_store import pg_meeting_store as meeting_store
+from app.services.smart_meeting_store import smart_meeting_store as meeting_store
 from app.services.ai_service import generate_insights
 
 logger = logging.getLogger(__name__)
