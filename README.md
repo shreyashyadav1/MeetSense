@@ -46,7 +46,7 @@ Built as a portfolio project demonstrating production-grade full-stack engineeri
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, TypeScript, Vite, React Router v6, Axios |
+| Frontend | React 19, TypeScript, Vite, React Router v6, Axios |
 | Styling | CSS custom properties, light theme |
 | Backend | Python 3.11, FastAPI, uvicorn (hot-reload) |
 | Real-time | WebSockets — browser to FastAPI to Deepgram |
