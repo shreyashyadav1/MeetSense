@@ -3,7 +3,7 @@ import type { TranscriptSegment } from '../types';
 import { formatClock } from '../utils/format';
 
 interface TranscriptPanelProps {
-  segments: TranscriptSegment[];
+  segments: readonly TranscriptSegment[];
   isLive?: boolean;
   interimSegment?: TranscriptSegment | null;
 }
@@ -41,7 +41,7 @@ interface SpeakerGroup {
 }
 
 function groupSegments(
-  segments: TranscriptSegment[],
+  segments: readonly TranscriptSegment[],
   speakerColorMap: Map<string, string>
 ): SpeakerGroup[] {
   const groups: SpeakerGroup[] = [];

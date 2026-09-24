@@ -40,9 +40,10 @@ export const MeetingRoom: React.FC = () => {
   const [meetingError, setMeetingError] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
 
-  const { segments, interimSegment, connectionStatus, sendAudio } = useMeetingSocket(meetingId);
+  const stream = useMeetingSocket(meetingId);
+  const { segments, interim, status: connectionStatus } = stream;
   const { status: micStatus, startRecording, stopRecording, audioLevel } = useMicrophone({
-    onChunk: sendAudio,
+    onChunk: stream.sendAudio,
   });
 
   const duration = useTimer(meeting?.started_at);
@@ -69,6 +70,8 @@ export const MeetingRoom: React.FC = () => {
 
     setIsEnding(true);
     stopRecording();
+    // Let the server flush the last transcript segments before the meeting closes.
+    await stream.stop();
     try {
       await endMeeting(meetingId);
       navigate(`/meeting/${meetingId}`);
@@ -76,7 +79,7 @@ export const MeetingRoom: React.FC = () => {
       console.error('[MeetingRoom] Failed to end meeting:', err);
       setIsEnding(false);
     }
-  }, [meetingId, isEnding, navigate, stopRecording]);
+  }, [meetingId, isEnding, navigate, stopRecording, stream]);
 
   const handleMicToggle = useCallback(() => {
     if (micStatus === 'active') {
@@ -197,13 +200,21 @@ export const MeetingRoom: React.FC = () => {
         <div className="meeting-room__transcript-wrapper">
           <div className="meeting-room__transcript-header">
             <h2 className="meeting-room__transcript-title">Live Transcript</h2>
-            {connectionStatus === 'error' && (
+            {connectionStatus === 'reconnecting' && (
+              <div className="alert alert--warning alert--inline">
+                {stream.error?.message ?? 'Connection lost.'} Reconnecting...
+              </div>
+            )}
+            {connectionStatus === 'failed' && (
               <div className="alert alert--error alert--inline">
-                WebSocket connection error. Attempting to reconnect...
+                {stream.error?.message ?? 'Lost the connection to the transcription server.'}
+                <button className="btn btn--ghost btn--sm" onClick={stream.connect}>
+                  Retry
+                </button>
               </div>
             )}
           </div>
-          <TranscriptPanel segments={segments} isLive={true} interimSegment={interimSegment} />
+          <TranscriptPanel segments={segments} isLive={true} interimSegment={interim} />
         </div>
       </div>
     </Layout>
