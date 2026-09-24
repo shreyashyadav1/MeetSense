@@ -4,8 +4,8 @@ import { Square, Clock, Loader2, AlertCircle, Mic, MicOff } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { StatusBadge } from '../components/StatusBadge';
-import { useMeetingSocket } from '../hooks/useMeetingSocket';
-import { useMicrophone } from '../hooks/useMicrophone';
+import { useMeetingSocket, type UseMeetingSocketResult } from '../hooks/useMeetingSocket';
+import { useMicrophone, type UseMicrophoneResult } from '../hooks/useMicrophone';
 import { getMeeting, endMeeting } from '../services/api';
 import type { Meeting } from '../types';
 import { formatClock } from '../utils/format';
@@ -29,6 +29,26 @@ function useTimer(startedAt: string | undefined): string {
   return formatClock(elapsed, { padMinutes: true });
 }
 
+function describeMicState(
+  mic: Pick<UseMicrophoneResult, 'status' | 'error'>,
+  stream: Pick<UseMeetingSocketResult, 'status' | 'sessionId'>,
+): string {
+  switch (mic.status) {
+    case 'requesting':
+      return 'Waiting for microphone permission...';
+    case 'active':
+      if (stream.sessionId !== null) return 'Recording...';
+      if (stream.status === 'stopping') return 'Finishing transcript...';
+      return 'Recording paused, waiting for the connection...';
+    case 'denied':
+    case 'error':
+    case 'unsupported':
+      return mic.error ?? 'Microphone unavailable.';
+    case 'idle':
+      return 'Click to start recording';
+  }
+}
+
 export const MeetingRoom: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,9 +62,15 @@ export const MeetingRoom: React.FC = () => {
 
   const stream = useMeetingSocket(meetingId);
   const { segments, interim, status: connectionStatus } = stream;
-  const { status: micStatus, startRecording, stopRecording, audioLevel } = useMicrophone({
-    onChunk: stream.sendAudio,
-  });
+  const mic = useMicrophone({ sessionId: stream.sessionId, onChunk: stream.sendAudio });
+  const micStatus = mic.status;
+
+  // Release the microphone once the session can no longer take audio.
+  const sessionOver = connectionStatus === 'stopped' || connectionStatus === 'failed';
+  const stopMic = mic.stop;
+  useEffect(() => {
+    if (sessionOver) void stopMic();
+  }, [sessionOver, stopMic]);
 
   const duration = useTimer(meeting?.started_at);
 
@@ -69,8 +95,8 @@ export const MeetingRoom: React.FC = () => {
     if (!meetingId || isEnding) return;
 
     setIsEnding(true);
-    stopRecording();
-    // Let the server flush the last transcript segments before the meeting closes.
+    // Deliver the last audio chunk, then let the server flush the transcript.
+    await mic.stop();
     await stream.stop();
     try {
       await endMeeting(meetingId);
@@ -79,15 +105,21 @@ export const MeetingRoom: React.FC = () => {
       console.error('[MeetingRoom] Failed to end meeting:', err);
       setIsEnding(false);
     }
-  }, [meetingId, isEnding, navigate, stopRecording, stream]);
+  }, [meetingId, isEnding, navigate, mic, stream]);
 
-  const handleMicToggle = useCallback(() => {
-    if (micStatus === 'active') {
-      stopRecording();
-    } else if (micStatus === 'idle' || micStatus === 'error') {
-      startRecording();
+  const handleMicToggle = useCallback(async () => {
+    if (micStatus === 'active' || micStatus === 'requesting') {
+      await mic.stop();
+      await stream.stop();
+      return;
     }
-  }, [micStatus, startRecording, stopRecording]);
+    if (stream.streamComplete) {
+      // This session's transcription source has finished; new audio needs a new session.
+      await stream.stop();
+    }
+    stream.connect();
+    await mic.start();
+  }, [micStatus, mic, stream]);
 
   if (isLoadingMeeting) {
     return (
@@ -117,12 +149,7 @@ export const MeetingRoom: React.FC = () => {
 
   const isRecording = micStatus === 'active';
   const micUnsupported = micStatus === 'unsupported';
-
-  let micStatusText = 'Click to start recording';
-  if (micStatus === 'requesting') micStatusText = 'Requesting microphone...';
-  else if (micStatus === 'active') micStatusText = 'Recording...';
-  else if (micStatus === 'error') micStatusText = 'Microphone error — click to retry';
-  else if (micStatus === 'unsupported') micStatusText = 'Microphone not supported in this browser';
+  const micStatusText = describeMicState(mic, stream);
 
   return (
     <Layout activeMeetingId={meetingId}>
@@ -169,14 +196,14 @@ export const MeetingRoom: React.FC = () => {
           {micUnsupported ? (
             <div className="alert alert--warning">
               <MicOff size={16} />
-              Microphone not supported in this browser
+              {mic.error}
             </div>
           ) : (
             <div className="mic-controls">
               <button
                 className={`mic-btn${isRecording ? ' recording' : ''}`}
                 onClick={handleMicToggle}
-                disabled={micStatus === 'requesting'}
+                disabled={connectionStatus === 'stopping'}
                 aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                 title={micStatusText}
               >
@@ -187,10 +214,15 @@ export const MeetingRoom: React.FC = () => {
                 <div className="audio-level-bar">
                   <div
                     className="audio-level-fill"
-                    style={{ width: `${audioLevel}%` }}
+                    style={{ width: `${mic.level}%` }}
                   />
                 </div>
-                <span className="mic-status-text">{micStatusText}</span>
+                <span
+                  className={`mic-status-text${mic.error ? ' mic-status-text--error' : ''}`}
+                  role={mic.error ? 'alert' : undefined}
+                >
+                  {micStatusText}
+                </span>
               </div>
             </div>
           )}

@@ -1252,6 +1252,10 @@ input, textarea {
   font-weight: 500;
 }
 
+.mic-status-text--error {
+  color: var(--error);
+}
+
 /* ===== INTERIM TRANSCRIPT ===== */
 .transcript-group.interim {
   opacity: 0.5;

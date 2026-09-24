@@ -21,7 +21,7 @@ export interface TranscriptSegment {
   sequence?: number;
 }
 
-export type MicrophoneStatus = 'idle' | 'requesting' | 'active' | 'error' | 'unsupported';
+export type MicrophoneStatus = 'idle' | 'requesting' | 'active' | 'denied' | 'error' | 'unsupported';
 
 export interface MeetingInsights {
   id: string;
