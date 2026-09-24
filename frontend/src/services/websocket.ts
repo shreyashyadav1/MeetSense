@@ -1,7 +1,7 @@
+import { apiConfig } from '../config';
 import type { WSMessage } from '../types';
 
-const _apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-const WS_BASE = _apiBase.replace(/^http/, 'ws');
+const WS_BASE = apiConfig.wsBaseUrl;
 const MAX_RETRIES = 3;
 const PING_INTERVAL_MS = 30_000;
 

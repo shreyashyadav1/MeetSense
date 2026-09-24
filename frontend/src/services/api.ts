@@ -1,10 +1,9 @@
 import axios from 'axios';
+import { apiConfig } from '../config';
 import type { Meeting, TranscriptSegment, MeetingInsights } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-
 const client = axios.create({
-  baseURL: API_BASE,
+  baseURL: apiConfig.apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
