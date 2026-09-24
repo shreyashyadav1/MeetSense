@@ -8,6 +8,7 @@ import { useMeetingSocket } from '../hooks/useMeetingSocket';
 import { useMicrophone } from '../hooks/useMicrophone';
 import { getMeeting, endMeeting } from '../services/api';
 import type { Meeting } from '../types';
+import { formatClock } from '../utils/format';
 
 function useTimer(startedAt: string | undefined): string {
   const [elapsed, setElapsed] = useState(0);
@@ -25,14 +26,7 @@ function useTimer(startedAt: string | undefined): string {
     return () => clearInterval(timer);
   }, [startedAt]);
 
-  const h = Math.floor(elapsed / 3600);
-  const m = Math.floor((elapsed % 3600) / 60);
-  const s = elapsed % 60;
-
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  }
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return formatClock(elapsed, { padMinutes: true });
 }
 
 export const MeetingRoom: React.FC = () => {

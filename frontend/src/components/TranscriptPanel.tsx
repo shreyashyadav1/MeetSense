@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import type { TranscriptSegment } from '../types';
+import { formatClock } from '../utils/format';
 
 interface TranscriptPanelProps {
   segments: TranscriptSegment[];
@@ -29,12 +30,6 @@ const FALLBACK_COLORS = [
 function getSpeakerColor(speaker: string, index: number): string {
   if (SPEAKER_COLORS[speaker]) return SPEAKER_COLORS[speaker];
   return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-}
-
-function formatTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 // Group consecutive segments from the same speaker
@@ -170,7 +165,7 @@ export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
                   {group.speaker}
                 </span>
                 <span className="transcript-group__time">
-                  {formatTimestamp(group.segments[0].timestamp)}
+                  {formatClock(group.segments[0].timestamp)}
                 </span>
               </div>
               {group.segments.map((seg) => (
@@ -200,7 +195,7 @@ export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
                   {interimGroup.speaker}
                 </span>
                 <span className="transcript-group__time">
-                  {formatTimestamp(interimGroup.segments[0].timestamp)}
+                  {formatClock(interimGroup.segments[0].timestamp)}
                 </span>
               </div>
               {interimGroup.segments.map((seg) => (

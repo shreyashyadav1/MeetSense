@@ -1,27 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MessageSquare, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { format, parseISO, differenceInSeconds } from 'date-fns';
 import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { MeetingStatusBadge } from '../components/StatusBadge';
 import { getMeeting, getTranscript } from '../services/api';
 import { InsightsPanel } from '../components/InsightsPanel';
 import type { Meeting, TranscriptSegment } from '../types';
-
-function formatDuration(startedAt: string, endedAt?: string): string {
-  const start = parseISO(startedAt);
-  const end = endedAt ? parseISO(endedAt) : new Date();
-  const totalSeconds = differenceInSeconds(end, start);
-
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
+import { formatDateTime, formatDuration } from '../utils/format';
 
 export const MeetingDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,13 +63,7 @@ export const MeetingDetails: React.FC = () => {
     );
   }
 
-  let formattedDate = '';
-  try {
-    formattedDate = format(parseISO(meeting.started_at), 'EEEE, MMMM d, yyyy · h:mm a');
-  } catch {
-    formattedDate = meeting.started_at;
-  }
-
+  const formattedDate = formatDateTime(meeting.started_at, 'EEEE, MMMM d, yyyy · h:mm a');
   const duration = formatDuration(meeting.started_at, meeting.ended_at);
 
   return (
