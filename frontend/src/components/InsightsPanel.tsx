@@ -1,67 +1,119 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, AlertCircle, Sparkles, CheckSquare, Circle, HelpCircle, Mail, Copy, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Loader2,
+  AlertCircle,
+  Sparkles,
+  CheckSquare,
+  Circle,
+  HelpCircle,
+  Mail,
+  Copy,
+  Check,
+} from 'lucide-react';
+import { useRequest } from '../hooks/useRequest';
 import { getInsights, summarizeMeeting } from '../services/api';
-import type { MeetingInsights } from '../types';
+import { getApiErrorMessage, getErrorStatus, type ErrorMessages } from '../services/errors';
+import type { MeetingInsights, MeetingStatus } from '../types';
 
 interface InsightsPanelProps {
   meetingId: string;
+  meetingStatus: MeetingStatus;
   hasTranscript: boolean;
 }
 
-export const InsightsPanel: React.FC<InsightsPanelProps> = ({ meetingId, hasTranscript }) => {
-  const [insights, setInsights] = useState<MeetingInsights | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const SUMMARIZE_ERRORS: ErrorMessages = {
+  fallback: 'Failed to generate insights. Please try again.',
+  byStatus: {
+    429: 'Insights can only be generated a few times per minute. Please wait a moment and try again.',
+    502: 'The AI provider failed to produce insights. Please try again in a moment.',
+    503: 'AI insights are not configured on this server.',
+  },
+};
+
+/** Saved insights, or null when none have been generated yet (404). */
+function loadSavedInsights(meetingId: string): Promise<MeetingInsights | null> {
+  return getInsights(meetingId).catch((error: unknown) => {
+    if (getErrorStatus(error) === 404) return null;
+    throw error;
+  });
+}
+
+interface InsightListProps {
+  title: string;
+  items: string[];
+  icon: React.ReactNode;
+}
+
+const InsightList: React.FC<InsightListProps> = ({ title, items, icon }) => (
+  <div className="insight-card">
+    <div className="insight-card__title">{title}</div>
+    {items.length === 0 ? (
+      <p className="insight-card__empty">None identified</p>
+    ) : (
+      <ul className="insight-card__list">
+        {items.map((item, i) => (
+          <li key={i}>
+            {icon}
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
+export const InsightsPanel: React.FC<InsightsPanelProps> = ({
+  meetingId,
+  meetingStatus,
+  hasTranscript,
+}) => {
+  const saved = useRequest(meetingId, loadSavedInsights);
+  const [generated, setGenerated] = useState<MeetingInsights | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!meetingId) {
-      setIsChecking(false);
-      return;
-    }
-    setIsChecking(true);
-    getInsights(meetingId)
-      .then((data) => {
-        setInsights(data);
-        setError(null);
-      })
-      .catch((err) => {
-        // 404 means no insights yet — that's normal, not an error
-        const status = err?.response?.status;
-        if (status !== 404) {
-          setError('Failed to load insights.');
-        }
-      })
-      .finally(() => setIsChecking(false));
-  }, [meetingId]);
+  const insights = generated ?? (saved.status === 'success' ? saved.data : null);
+  const error =
+    generateError ?? (saved.status === 'error' ? 'Could not load saved insights.' : null);
+  const blockedReason =
+    meetingStatus !== 'ended'
+      ? 'End the meeting first to generate insights.'
+      : !hasTranscript
+        ? 'This meeting has no transcript to summarize.'
+        : null;
 
-  const handleGenerate = async () => {
-    setIsLoading(true);
-    setError(null);
+  const generate = async (force: boolean) => {
+    setIsGenerating(true);
+    setGenerateError(null);
     try {
-      const data = await summarizeMeeting(meetingId);
-      setInsights(data);
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        'Failed to generate insights. Please try again.';
-      setError(message);
+      setGenerated(await summarizeMeeting(meetingId, { force }));
+    } catch (err) {
+      setGenerateError(getApiErrorMessage(err, SUMMARIZE_ERRORS));
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleCopy = () => {
-    if (!insights) return;
-    navigator.clipboard.writeText(insights.follow_up_email).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    if (!insights || !navigator.clipboard) return;
+    navigator.clipboard.writeText(insights.follow_up_email).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      },
+      () => undefined,
+    );
   };
 
-  // Still doing the initial fetch check
-  if (isChecking) {
+  const errorAlert = error && (
+    <div className="alert alert--error alert--inline insights-panel__alert" role="alert">
+      <AlertCircle size={14} />
+      {error}
+    </div>
+  );
+
+  if (saved.status === 'loading' && !generated) {
     return (
       <div className="insights-panel">
         <div className="loading-state">
@@ -72,122 +124,74 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ meetingId, hasTran
     );
   }
 
-  // Generating in progress
-  if (isLoading) {
+  if (isGenerating) {
     return (
       <div className="insights-panel">
         <div className="insights-generate">
-          <Loader2 size={28} className="spin" style={{ color: 'var(--accent)', marginBottom: '0.75rem' }} />
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            Analyzing transcript with Groq AI...
-          </p>
+          <Loader2 size={28} className="spin insights-generate__icon insights-generate__icon--compact" />
+          <p className="insights-generate__status">Analyzing transcript with Groq AI...</p>
         </div>
       </div>
     );
   }
 
-  // No insights yet — show generate button
   if (!insights) {
-    const disabled = !hasTranscript;
     return (
       <div className="insights-panel">
         <div className="insights-generate">
-          <Sparkles size={32} style={{ color: 'var(--accent)', marginBottom: '1rem' }} />
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-            Generate a summary, action items, decisions, and a follow-up email draft from this meeting's transcript.
+          <Sparkles size={32} className="insights-generate__icon" />
+          <p className="insights-generate__description">
+            Generate a summary, action items, decisions, and a follow-up email draft from this
+            meeting's transcript.
           </p>
-          {error && (
-            <div className="alert alert--error alert--inline" style={{ marginBottom: '1rem', justifyContent: 'center' }}>
-              <AlertCircle size={14} />
-              {error}
-            </div>
-          )}
-          <div title={disabled ? 'End the meeting first to generate insights' : undefined}>
+          {errorAlert}
+          <div title={blockedReason ?? undefined}>
             <button
               className="btn btn--primary"
-              onClick={handleGenerate}
-              disabled={disabled}
+              onClick={() => void generate(false)}
+              disabled={blockedReason !== null}
             >
               <Sparkles size={15} />
               Generate AI Insights
             </button>
           </div>
-          {disabled && (
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              End the meeting first to generate insights
-            </p>
-          )}
+          {blockedReason && <p className="insights-generate__hint">{blockedReason}</p>}
         </div>
       </div>
     );
   }
 
-  // Insights loaded — show the cards
   return (
     <div className="insights-panel">
       <div className="insights-grid">
-        {/* Summary */}
         <div className="insight-card">
           <div className="insight-card__title">Summary</div>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-            {insights.summary || <span style={{ color: 'var(--text-muted)' }}>None identified</span>}
-          </p>
-        </div>
-
-        {/* Action Items */}
-        <div className="insight-card">
-          <div className="insight-card__title">Action Items</div>
-          {insights.action_items.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>None identified</p>
+          {insights.summary ? (
+            <p className="insight-card__text">{insights.summary}</p>
           ) : (
-            <ul className="insight-card__list">
-              {insights.action_items.map((item, i) => (
-                <li key={i}>
-                  <CheckSquare size={13} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: '2px' }} />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="insight-card__empty">None identified</p>
           )}
         </div>
 
-        {/* Decisions */}
-        <div className="insight-card">
-          <div className="insight-card__title">Decisions</div>
-          {insights.decisions.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>None identified</p>
-          ) : (
-            <ul className="insight-card__list">
-              {insights.decisions.map((item, i) => (
-                <li key={i}>
-                  <Circle size={8} style={{ color: 'var(--success)', flexShrink: 0, marginTop: '5px', fill: 'var(--success)' }} />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <InsightList
+          title="Action Items"
+          items={insights.action_items}
+          icon={<CheckSquare size={13} className="insight-card__icon insight-card__icon--action" />}
+        />
+        <InsightList
+          title="Decisions"
+          items={insights.decisions}
+          icon={<Circle size={8} className="insight-card__icon insight-card__icon--decision" />}
+        />
+        <InsightList
+          title="Questions Raised"
+          items={insights.questions_raised}
+          icon={<HelpCircle size={13} className="insight-card__icon insight-card__icon--question" />}
+        />
 
-        {/* Questions Raised */}
-        <div className="insight-card">
-          <div className="insight-card__title">Questions Raised</div>
-          {insights.questions_raised.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>None identified</p>
-          ) : (
-            <ul className="insight-card__list">
-              {insights.questions_raised.map((item, i) => (
-                <li key={i}>
-                  <HelpCircle size={13} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: '2px' }} />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Follow-up Email — full width */}
+        {/* Follow-up email spans the full width */}
         <div className="insight-card email-card">
-          <div className="insight-card__title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div className="insight-card__title insight-card__title--with-icon">
             <Mail size={12} />
             Follow-up Email
           </div>
@@ -214,12 +218,13 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({ meetingId, hasTran
         </div>
       </div>
 
-      {/* Regenerate button */}
-      <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+      <div className="insights-panel__actions">
+        {errorAlert}
         <button
           className="btn btn--ghost btn--sm"
-          onClick={handleGenerate}
-          disabled={isLoading}
+          onClick={() => void generate(true)}
+          disabled={blockedReason !== null}
+          title={blockedReason ?? 'Generate the insights again from the current transcript'}
         >
           <Sparkles size={13} />
           Regenerate

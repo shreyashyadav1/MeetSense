@@ -37,8 +37,14 @@ export async function getTranscript(id: string): Promise<TranscriptSegment[]> {
   return response.data;
 }
 
-export async function summarizeMeeting(id: string): Promise<MeetingInsights> {
-  const response = await apiClient.post<MeetingInsights>(`${meetingPath(id)}/summarize`);
+/** Generates insights; `force` regenerates them even if saved ones exist. */
+export async function summarizeMeeting(
+  id: string,
+  { force = false }: { force?: boolean } = {},
+): Promise<MeetingInsights> {
+  const response = await apiClient.post<MeetingInsights>(`${meetingPath(id)}/summarize`, undefined, {
+    params: force ? { force: true } : undefined,
+  });
   return response.data;
 }
 
