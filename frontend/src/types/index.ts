@@ -18,10 +18,6 @@ export interface TranscriptSegment {
 
 export type MicrophoneStatus = 'idle' | 'requesting' | 'active' | 'error' | 'unsupported';
 
-export interface AudioLevel {
-  level: number; // 0-100
-}
-
 export type WSMessage =
   | { type: 'transcript'; data: TranscriptSegment }
   | { type: 'status'; data: { status: string; meeting_id: string } }
