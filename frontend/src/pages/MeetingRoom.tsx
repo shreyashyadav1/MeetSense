@@ -1,33 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Square, Clock, Loader2, AlertCircle, Mic, MicOff } from 'lucide-react';
+import { Square, Clock, Loader2, AlertCircle, Mic, MicOff, FlaskConical } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { StatusBadge } from '../components/StatusBadge';
 import { useMeetingSocket, type UseMeetingSocketResult } from '../hooks/useMeetingSocket';
 import { useMicrophone, type UseMicrophoneResult } from '../hooks/useMicrophone';
+import { useRequest } from '../hooks/useRequest';
 import { getMeeting, endMeeting } from '../services/api';
-import type { Meeting } from '../types';
+import { getApiErrorMessage, getErrorStatus } from '../services/errors';
 import { formatClock } from '../utils/format';
 
-function useTimer(startedAt: string | undefined): string {
-  const [elapsed, setElapsed] = useState(0);
+const DEMO_MODE_EXPLANATION =
+  'The server has no speech-to-text provider configured, so it streams a scripted sample ' +
+  'meeting. Microphone audio is not transcribed in this mode.';
+
+/** Time since `since`, re-rendering only itself once per second. */
+const ElapsedTime: React.FC<{ since: string }> = ({ since }) => {
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!startedAt) return;
-
-    const update = () => {
-      const diff = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-      setElapsed(Math.max(0, diff));
-    };
-
-    update();
-    const timer = setInterval(update, 1000);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [startedAt]);
+  }, []);
 
-  return formatClock(elapsed, { padMinutes: true });
-}
+  return <>{formatClock((now - new Date(since).getTime()) / 1000, { padMinutes: true })}</>;
+};
 
 function describeMicState(
   mic: Pick<UseMicrophoneResult, 'status' | 'error'>,
@@ -50,20 +48,20 @@ function describeMicState(
 }
 
 export const MeetingRoom: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
+  // Keyed so the stream, microphone and transcript start fresh for each meeting.
+  return <MeetingRoomView key={id} meetingId={id} />;
+};
+
+const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   const navigate = useNavigate();
-
-  const meetingId = id ?? '';
-
-  const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [isLoadingMeeting, setIsLoadingMeeting] = useState(true);
-  const [meetingError, setMeetingError] = useState<string | null>(null);
+  const meetingRequest = useRequest(meetingId, getMeeting);
   const [isEnding, setIsEnding] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
 
   const stream = useMeetingSocket(meetingId);
   const { segments, interim, status: connectionStatus } = stream;
   const mic = useMicrophone({ sessionId: stream.sessionId, onChunk: stream.sendAudio });
-  const micStatus = mic.status;
 
   // Release the microphone once the session can no longer take audio.
   const sessionOver = connectionStatus === 'stopped' || connectionStatus === 'failed';
@@ -72,43 +70,31 @@ export const MeetingRoom: React.FC = () => {
     if (sessionOver) void stopMic();
   }, [sessionOver, stopMic]);
 
-  const duration = useTimer(meeting?.started_at);
-
-  // Fetch meeting metadata
-  useEffect(() => {
-    if (!meetingId) return;
-
-    setIsLoadingMeeting(true);
-    getMeeting(meetingId)
-      .then((data) => {
-        setMeeting(data);
-        setMeetingError(null);
-      })
-      .catch((err) => {
-        console.error('[MeetingRoom] Failed to load meeting:', err);
-        setMeetingError('Could not load meeting. Check that the backend is running.');
-      })
-      .finally(() => setIsLoadingMeeting(false));
-  }, [meetingId]);
-
-  const handleEndMeeting = useCallback(async () => {
-    if (!meetingId || isEnding) return;
-
+  const handleEndMeeting = async () => {
+    if (isEnding) return;
     setIsEnding(true);
+    setEndError(null);
+
     // Deliver the last audio chunk, then let the server flush the transcript.
     await mic.stop();
     await stream.stop();
     try {
       await endMeeting(meetingId);
-      navigate(`/meeting/${meetingId}`);
-    } catch (err) {
-      console.error('[MeetingRoom] Failed to end meeting:', err);
-      setIsEnding(false);
+    } catch (error) {
+      // 409 means it was already ended (e.g. from another tab), which is fine.
+      if (getErrorStatus(error) !== 409) {
+        setEndError(
+          getApiErrorMessage(error, { fallback: 'Could not end the meeting. Please try again.' }),
+        );
+        setIsEnding(false);
+        return;
+      }
     }
-  }, [meetingId, isEnding, navigate, mic, stream]);
+    navigate(`/meeting/${meetingId}`);
+  };
 
-  const handleMicToggle = useCallback(async () => {
-    if (micStatus === 'active' || micStatus === 'requesting') {
+  const handleMicToggle = async () => {
+    if (mic.status === 'active' || mic.status === 'requesting') {
       await mic.stop();
       await stream.stop();
       return;
@@ -119,9 +105,9 @@ export const MeetingRoom: React.FC = () => {
     }
     stream.connect();
     await mic.start();
-  }, [micStatus, mic, stream]);
+  };
 
-  if (isLoadingMeeting) {
+  if (meetingRequest.status === 'loading') {
     return (
       <Layout activeMeetingId={meetingId}>
         <div className="loading-state loading-state--page">
@@ -132,13 +118,18 @@ export const MeetingRoom: React.FC = () => {
     );
   }
 
-  if (meetingError || !meeting) {
+  if (meetingRequest.status === 'error') {
     return (
       <Layout activeMeetingId={meetingId}>
         <div className="error-state">
           <AlertCircle size={32} />
           <h2>Could not load meeting</h2>
-          <p>{meetingError ?? 'Meeting not found.'}</p>
+          <p>
+            {getApiErrorMessage(meetingRequest.error, {
+              fallback: 'Could not load the meeting. Please try again.',
+              byStatus: { 404: 'This meeting does not exist.' },
+            })}
+          </p>
           <button className="btn btn--primary" onClick={() => navigate('/')}>
             Back to Dashboard
           </button>
@@ -147,8 +138,8 @@ export const MeetingRoom: React.FC = () => {
     );
   }
 
-  const isRecording = micStatus === 'active';
-  const micUnsupported = micStatus === 'unsupported';
+  const meeting = meetingRequest.data;
+  const isRecording = mic.status === 'active';
   const micStatusText = describeMicState(mic, stream);
 
   return (
@@ -161,9 +152,15 @@ export const MeetingRoom: React.FC = () => {
             <div className="meeting-room__meta">
               <span className="meeting-room__timer">
                 <Clock size={14} />
-                {duration}
+                <ElapsedTime since={meeting.started_at} />
               </span>
               <StatusBadge status={connectionStatus} />
+              {stream.mode === 'mock' && (
+                <span className="demo-badge" title={DEMO_MODE_EXPLANATION}>
+                  <FlaskConical size={12} aria-hidden="true" />
+                  Demo mode — simulated transcript
+                </span>
+              )}
             </div>
           </div>
 
@@ -173,7 +170,7 @@ export const MeetingRoom: React.FC = () => {
             </span>
             <button
               className="btn btn--danger"
-              onClick={handleEndMeeting}
+              onClick={() => void handleEndMeeting()}
               disabled={isEnding}
             >
               {isEnding ? (
@@ -191,9 +188,16 @@ export const MeetingRoom: React.FC = () => {
           </div>
         </div>
 
+        {endError && (
+          <div className="alert alert--error" role="alert">
+            <AlertCircle size={16} />
+            {endError}
+          </div>
+        )}
+
         {/* Microphone control section */}
         <div className="mic-section">
-          {micUnsupported ? (
+          {mic.status === 'unsupported' ? (
             <div className="alert alert--warning">
               <MicOff size={16} />
               {mic.error}
@@ -202,8 +206,8 @@ export const MeetingRoom: React.FC = () => {
             <div className="mic-controls">
               <button
                 className={`mic-btn${isRecording ? ' recording' : ''}`}
-                onClick={handleMicToggle}
-                disabled={connectionStatus === 'stopping'}
+                onClick={() => void handleMicToggle()}
+                disabled={connectionStatus === 'stopping' || isEnding}
                 aria-label={isRecording ? 'Stop recording' : 'Start recording'}
                 title={micStatusText}
               >
@@ -212,10 +216,7 @@ export const MeetingRoom: React.FC = () => {
 
               <div className="mic-info">
                 <div className="audio-level-bar">
-                  <div
-                    className="audio-level-fill"
-                    style={{ width: `${mic.level}%` }}
-                  />
+                  <div className="audio-level-fill" style={{ width: `${mic.level}%` }} />
                 </div>
                 <span
                   className={`mic-status-text${mic.error ? ' mic-status-text--error' : ''}`}
@@ -232,23 +233,62 @@ export const MeetingRoom: React.FC = () => {
         <div className="meeting-room__transcript-wrapper">
           <div className="meeting-room__transcript-header">
             <h2 className="meeting-room__transcript-title">Live Transcript</h2>
-            {connectionStatus === 'reconnecting' && (
-              <div className="alert alert--warning alert--inline">
-                {stream.error?.message ?? 'Connection lost.'} Reconnecting...
-              </div>
-            )}
-            {connectionStatus === 'failed' && (
-              <div className="alert alert--error alert--inline">
-                {stream.error?.message ?? 'Lost the connection to the transcription server.'}
-                <button className="btn btn--ghost btn--sm" onClick={stream.connect}>
-                  Retry
-                </button>
-              </div>
-            )}
+            <StreamNotice stream={stream} onViewMeeting={() => navigate(`/meeting/${meetingId}`)} />
           </div>
-          <TranscriptPanel segments={segments} isLive={true} interimSegment={interim} />
+          <TranscriptPanel
+            segments={segments}
+            isLive={!sessionOver && !stream.streamComplete}
+            interimSegment={interim}
+          />
         </div>
       </div>
     </Layout>
   );
+};
+
+interface StreamNoticeProps {
+  stream: UseMeetingSocketResult;
+  onViewMeeting: () => void;
+}
+
+/** Connection problems and end-of-stream notes shown above the transcript. */
+const StreamNotice: React.FC<StreamNoticeProps> = ({ stream, onViewMeeting }) => {
+  if (stream.status === 'reconnecting') {
+    const { reconnect } = stream;
+    const attempt = reconnect ? ` (attempt ${reconnect.attempt} of ${reconnect.maxAttempts})` : '';
+    return (
+      <div className="alert alert--warning alert--inline" role="status">
+        {stream.error?.message ?? 'Connection lost.'} Reconnecting{attempt}...
+      </div>
+    );
+  }
+
+  if (stream.status === 'failed') {
+    return (
+      <div className="alert alert--error alert--inline" role="alert">
+        {stream.error?.message ?? 'Lost the connection to the transcription server.'}
+        {stream.error?.code === 'meeting_ended' ? (
+          <button className="btn btn--ghost btn--sm" onClick={onViewMeeting}>
+            View meeting
+          </button>
+        ) : (
+          <button className="btn btn--ghost btn--sm" onClick={stream.connect}>
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (stream.streamComplete) {
+    return (
+      <span className="meeting-room__stream-note" role="status">
+        {stream.mode === 'mock'
+          ? 'Simulated transcript complete.'
+          : 'Transcription finished. Start recording to begin a new session.'}
+      </span>
+    );
+  }
+
+  return null;
 };

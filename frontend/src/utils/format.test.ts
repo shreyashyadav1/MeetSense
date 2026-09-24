@@ -26,6 +26,7 @@ describe('formatClock', () => {
     expect(formatClock(65.9)).toBe('1:05');
     expect(formatClock(3723)).toBe('1:02:03');
     expect(formatClock(65, { padMinutes: true })).toBe('01:05');
+    expect(formatClock(Number.NaN)).toBe('0:00');
   });
 });
 

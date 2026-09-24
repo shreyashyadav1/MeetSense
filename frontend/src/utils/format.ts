@@ -31,7 +31,7 @@ export function formatDuration(
 
 /** Clock-style elapsed time: "1:05" or "1:02:03" ("01:05" with `padMinutes`). */
 export function formatClock(totalSeconds: number, { padMinutes = false } = {}): string {
-  const clamped = Math.max(0, Math.floor(totalSeconds));
+  const clamped = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
   const hours = Math.floor(clamped / 3600);
   const minutes = Math.floor((clamped % 3600) / 60);
   const seconds = String(clamped % 60).padStart(2, '0');
