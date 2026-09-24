@@ -752,6 +752,27 @@ input, textarea {
   opacity: 0.5;
 }
 
+.form-input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.form-field__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.form-hint--error {
+  color: var(--error);
+}
+
 /* ===== MEETING ROOM ===== */
 .meeting-room {
   display: flex;
