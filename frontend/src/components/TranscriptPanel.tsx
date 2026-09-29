@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import type { TranscriptSegment } from '../types';
 import { formatClock } from '../utils/format';
+import {
+  assignSpeakerColors,
+  speakerInitials,
+  speakerLabel,
+  UNKNOWN_SPEAKER_COLOR,
+} from '../utils/speakers';
 
 interface TranscriptPanelProps {
   segments: readonly TranscriptSegment[];
@@ -8,61 +14,22 @@ interface TranscriptPanelProps {
   interimSegment?: TranscriptSegment | null;
 }
 
-// Consistent color palette per speaker
-const SPEAKER_COLORS: Record<string, string> = {
-  Alice: '#6366f1',
-  Bob: '#10b981',
-  Carol: '#f59e0b',
-  David: '#ef4444',
-};
-
-const FALLBACK_COLORS = [
-  '#6366f1',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#f97316',
-  '#ec4899',
-];
-
-function getSpeakerColor(speaker: string, index: number): string {
-  if (SPEAKER_COLORS[speaker]) return SPEAKER_COLORS[speaker];
-  return FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-}
-
-// Group consecutive segments from the same speaker
+/** Consecutive segments from the same speaker. */
 interface SpeakerGroup {
   speaker: string;
-  color: string;
-  initials: string;
   segments: TranscriptSegment[];
 }
 
-function groupSegments(
-  segments: readonly TranscriptSegment[],
-  speakerColorMap: Map<string, string>
-): SpeakerGroup[] {
+function groupBySpeaker(segments: readonly TranscriptSegment[]): SpeakerGroup[] {
   const groups: SpeakerGroup[] = [];
-
-  for (const seg of segments) {
-    const color = speakerColorMap.get(seg.speaker) ?? '#6366f1';
-    const last = groups[groups.length - 1];
-
-    if (last && last.speaker === seg.speaker) {
-      last.segments.push(seg);
+  for (const segment of segments) {
+    const last = groups.at(-1);
+    if (last && last.speaker === segment.speaker) {
+      last.segments.push(segment);
     } else {
-      const initials = seg.speaker
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-      groups.push({ speaker: seg.speaker, color, initials, segments: [seg] });
+      groups.push({ speaker: segment.speaker, segments: [segment] });
     }
   }
-
   return groups;
 }
 
@@ -85,41 +52,56 @@ const InterimDots: React.FC = () => (
   </span>
 );
 
+interface SpeakerGroupRowProps {
+  group: SpeakerGroup;
+  color: string;
+  /** Renders the in-progress (not yet final) utterance. */
+  interim?: boolean;
+}
+
+const SpeakerGroupRow: React.FC<SpeakerGroupRowProps> = ({ group, color, interim = false }) => (
+  <div className={`transcript-group transcript-group--enter${interim ? ' interim' : ''}`}>
+    <div className="transcript-group__avatar" style={{ backgroundColor: color }} aria-hidden="true">
+      {speakerInitials(group.speaker)}
+    </div>
+    <div className="transcript-group__content">
+      <div className="transcript-group__header">
+        <span className="transcript-group__speaker" style={{ color }}>
+          {speakerLabel(group.speaker)}
+        </span>
+        <span className="transcript-group__time">{formatClock(group.segments[0].timestamp)}</span>
+      </div>
+      {group.segments.map((segment) => (
+        <p key={segment.id} className="transcript-group__text">
+          {segment.text}
+          {interim && <InterimDots />}
+        </p>
+      ))}
+    </div>
+  </div>
+);
+
 export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
   segments,
   isLive = false,
   interimSegment = null,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build speaker -> color map (stable across renders)
-  // Include the interim speaker so their color is consistent
-  const speakerColorMap = useMemo(() => {
-    const map = new Map<string, string>();
-    let colorIdx = 0;
-    const allSegments = interimSegment
-      ? [...segments, interimSegment]
-      : segments;
-    for (const seg of allSegments) {
-      if (!map.has(seg.speaker)) {
-        map.set(seg.speaker, getSpeakerColor(seg.speaker, colorIdx));
-        colorIdx++;
-      }
-    }
-    return map;
+  // Colours follow order of appearance; the interim speaker is included so it
+  // keeps the same colour once the segment is finalised.
+  const speakerColors = useMemo(() => {
+    const speakers = segments.map((segment) => segment.speaker);
+    if (interimSegment) speakers.push(interimSegment.speaker);
+    return assignSpeakerColors(speakers);
   }, [segments, interimSegment]);
 
-  const groups = useMemo(
-    () => groupSegments(segments, speakerColorMap),
-    [segments, speakerColorMap]
-  );
+  const groups = useMemo(() => groupBySpeaker(segments), [segments]);
+  const colorOf = (speaker: string) => speakerColors.get(speaker) ?? UNKNOWN_SPEAKER_COLOR;
 
-  // Auto-scroll to bottom whenever segments or interim change
+  // Keep the newest text in view.
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [segments.length, interimSegment]);
 
   if (segments.length === 0 && !interimSegment) {
@@ -134,78 +116,19 @@ export const TranscriptPanel: React.FC<TranscriptPanelProps> = ({
     );
   }
 
-  // Build interim group if we have an interim segment
-  const interimGroup: SpeakerGroup | null = interimSegment
-    ? (() => {
-        const color = speakerColorMap.get(interimSegment.speaker) ?? '#6366f1';
-        const initials = interimSegment.speaker
-          .split(' ')
-          .map((w) => w[0])
-          .join('')
-          .toUpperCase()
-          .slice(0, 2);
-        return { speaker: interimSegment.speaker, color, initials, segments: [interimSegment] };
-      })()
-    : null;
-
   return (
-    <div className="transcript-panel" ref={containerRef}>
+    <div className="transcript-panel">
       <div className="transcript-panel__inner">
-        {groups.map((group, groupIdx) => (
-          <div
-            key={`${group.speaker}-${groupIdx}`}
-            className="transcript-group transcript-group--enter"
-          >
-            <div className="transcript-group__avatar" style={{ backgroundColor: group.color }}>
-              {group.initials}
-            </div>
-            <div className="transcript-group__content">
-              <div className="transcript-group__header">
-                <span className="transcript-group__speaker" style={{ color: group.color }}>
-                  {group.speaker}
-                </span>
-                <span className="transcript-group__time">
-                  {formatClock(group.segments[0].timestamp)}
-                </span>
-              </div>
-              {group.segments.map((seg) => (
-                <p key={seg.id} className="transcript-group__text">
-                  {seg.text}
-                </p>
-              ))}
-            </div>
-          </div>
+        {groups.map((group) => (
+          <SpeakerGroupRow key={group.segments[0].id} group={group} color={colorOf(group.speaker)} />
         ))}
 
-        {/* Interim (ghost) segment */}
-        {interimGroup && (
-          <div className="transcript-group transcript-group--enter interim">
-            <div
-              className="transcript-group__avatar"
-              style={{ backgroundColor: interimGroup.color }}
-            >
-              {interimGroup.initials}
-            </div>
-            <div className="transcript-group__content">
-              <div className="transcript-group__header">
-                <span
-                  className="transcript-group__speaker"
-                  style={{ color: interimGroup.color }}
-                >
-                  {interimGroup.speaker}
-                </span>
-                <span className="transcript-group__time">
-                  {formatClock(interimGroup.segments[0].timestamp)}
-                </span>
-              </div>
-              {interimGroup.segments.map((seg) => (
-                <p key={seg.id} className="transcript-group__text">
-                  {seg.text}
-                  <InterimDots />
-                </p>
-              ))}
-            </div>
-          </div>
+        {interimSegment && (
+          <SpeakerGroupRow
+            group={{ speaker: interimSegment.speaker, segments: [interimSegment] }}
+            color={colorOf(interimSegment.speaker)}
+            interim
+          />
         )}
 
         {isLive && segments.length > 0 && !interimSegment && (
