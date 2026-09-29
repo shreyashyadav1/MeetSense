@@ -85,7 +85,7 @@ def test_mock_stream_end_to_end(client: TestClient) -> None:
     assert [(m["speaker"], m["text"]) for m in finals] == list(DIALOGUE)
     assert set(finals[0]) == {
         "type", "id", "meeting_id", "sequence", "speaker", "text", "timestamp", "confidence",
-        "is_final",
+        "is_final", "emitted_at",
     }  # fmt: skip
 
     # Interim results preview the segment that takes the next number.
@@ -101,6 +101,18 @@ def test_mock_stream_end_to_end(client: TestClient) -> None:
     assert [s["id"] for s in stored] == [m["id"] for m in finals]
     timestamps = [s["timestamp"] for s in stored]
     assert timestamps == sorted(timestamps)
+
+
+def test_transcript_messages_carry_a_server_emit_timestamp(client: TestClient) -> None:
+    meeting_id = create_meeting(client)
+    before = time.time()
+    with client.websocket_connect(stream_url(meeting_id)) as ws:
+        assert ws.receive_json() == CONNECTED_MOCK
+        message = ws.receive_json()
+        ws.send_json({"type": "stop"})
+    after = time.time()
+    assert message["type"] == "transcript"
+    assert before <= message["emitted_at"] <= after
 
 
 def test_stop_flushes_the_source_before_confirming(
