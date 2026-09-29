@@ -60,19 +60,25 @@ cd backend
 python3.11 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 DATABASE_URL="postgresql://postgres:postgres@localhost:5434/postgres" .venv/bin/alembic upgrade head
 
-# Start the backend in mock mode, pointed at those containers, with the
-# per-IP socket cap raised — the load generator runs from one machine (one
-# IP), so the default WS_MAX_CONNECTIONS_PER_IP=3 would reject almost every
-# connection above 3 concurrent sockets. This is a *local load-test-only*
-# override: production keeps the default cap.
+# Start the backend in mock mode, pointed at those containers, with two
+# per-IP defensive limits raised — the load generator runs from one machine
+# (one IP), so the production defaults would reject almost everything above
+# a handful of concurrent sockets or meetings created per minute. Both are
+# *local load-test-only* overrides: production keeps the tighter defaults.
 MOCK_TRANSCRIPTION=true \
 DATABASE_URL="postgresql://postgres:postgres@localhost:5434/meetsense_test" \
 REDIS_URL="redis://localhost:6381" \
 ALLOW_MEMORY_FALLBACK=false \
 WS_MAX_CONNECTIONS_PER_IP=500 \
+CREATE_MEETING_RATE_LIMIT=1000/minute \
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --log-level warning &
 echo "backend pid: $!"   # pass this to --server-pid below for CPU/RSS sampling
 ```
+
+`CREATE_MEETING_RATE_LIMIT` didn't exist until this load test hit it: ramping
+to 200 meetings from a single IP tripped the default 20/minute limit on
+`POST /api/meetings` (working as designed — it's just not designed for one
+host provisioning 200 meetings at once). See `RESULTS.md` for that finding.
 
 ## Running the scenarios
 
