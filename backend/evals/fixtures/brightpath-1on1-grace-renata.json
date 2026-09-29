@@ -1,0 +1,40 @@
+{
+  "meeting_id": "brightpath-1on1-grace-renata",
+  "meeting_type": "one_on_one",
+  "company": "BrightPath Learning",
+  "title": "1:1 - Grace Eze & Renata Silva",
+  "duration_minutes": 22,
+  "participants": ["Grace Eze", "Renata Silva"],
+  "transcript": [
+    {"speaker": "Renata Silva", "text": "I want to talk through the tension I sensed in the planning session - it felt like you weren't fully on board with deprioritizing the adaptive practice version of the AI tutor."},
+    {"speaker": "Grace Eze", "text": "You read that right. I think the simple version is the right call for this cycle, but I'm worried that if we don't at least prototype adaptive practice soon, a competitor beats us to it and the simple version feels dated by the time we ship it."},
+    {"speaker": "Renata Silva", "text": "That's a fair concern. What would it take to at least de-risk the adaptive version without fully committing engineering time to it this cycle?"},
+    {"speaker": "Grace Eze", "text": "I could put together a lightweight research spike - talk to a few teachers about what 'adaptive' would actually need to mean for it to be useful, without writing production code yet. That's maybe a week of my time, not engineering's."},
+    {"speaker": "Renata Silva", "text": "I like that - it keeps engineering focused on the simple version while we learn what we'd need to build next. Can you scope that spike this week?"},
+    {"speaker": "Grace Eze", "text": "Yes, I'll talk to three or four teachers from our advisory panel and summarize findings."},
+    {"speaker": "Renata Silva", "text": "Let's plan to review those findings together before we scope next cycle's roadmap, so it actually influences the decision instead of arriving too late."},
+    {"speaker": "Grace Eze", "text": "Agreed, I'll have it ready before the next roadmap planning session."},
+    {"speaker": "Renata Silva", "text": "Separately - how are you feeling about your workload generally? You've got the AI tutor, the course builder feature, and now this spike."},
+    {"speaker": "Grace Eze", "text": "It's a lot, but manageable for now. If the course builder cross-module drag work drags into a second sprint, I might need to hand off some AI tutor coordination to someone else temporarily."},
+    {"speaker": "Renata Silva", "text": "Let's keep an eye on that. Flag it to me directly if it starts to feel unmanageable rather than pushing through quietly."},
+    {"speaker": "Grace Eze", "text": "I will, thank you."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Grace raised concern that deprioritizing adaptive AI tutor practice could let a competitor get ahead",
+      "A lightweight, non-engineering research spike with teachers will de-risk the adaptive version without committing engineering time this cycle",
+      "Findings from the spike will be reviewed before next cycle's roadmap planning",
+      "Grace's workload across the AI tutor, course builder, and the new spike will be monitored"
+    ],
+    "action_items": [
+      {"owner": "Grace Eze", "task": "Talk to three or four advisory panel teachers about what adaptive practice would need to mean, and summarize findings"}
+    ],
+    "decisions": [
+      "Run a lightweight research spike on adaptive practice instead of committing engineering time this cycle",
+      "Review the research spike's findings before scoping next cycle's roadmap"
+    ],
+    "open_questions": [
+      "Will Grace need to hand off some AI tutor coordination if the course builder work runs into a second sprint?"
+    ]
+  }
+}

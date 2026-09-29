@@ -1,0 +1,44 @@
+{
+  "meeting_id": "orbitlytics-1on1-priya-derek",
+  "meeting_type": "one_on_one",
+  "company": "Orbitlytics",
+  "title": "1:1 - Priya Nandakumar & Derek Osei",
+  "duration_minutes": 24,
+  "participants": ["Priya Nandakumar", "Derek Osei"],
+  "transcript": [
+    {"speaker": "Derek Osei", "text": "How are you feeling about the team's bandwidth heading into the SSO project?"},
+    {"speaker": "Priya Nandakumar", "text": "Honestly, a little stretched. Jae-won's carrying most of the backend load between SSO and normal maintenance, and Sofia's split between SSO wireframes and onboarding polish."},
+    {"speaker": "Derek Osei", "text": "Do you think we need to hire, or is this a temporary crunch?"},
+    {"speaker": "Priya Nandakumar", "text": "I think we could use one more backend engineer, especially once SSO ramps up. It's not urgent-urgent, but I'd rather raise it now than in month two of the project when it's a fire."},
+    {"speaker": "Derek Osei", "text": "Let's open a req. Can you draft the role description this week so I can review it?"},
+    {"speaker": "Priya Nandakumar", "text": "Yes, I'll have a draft ready by Friday."},
+    {"speaker": "Derek Osei", "text": "On a separate note - how are you feeling about your own growth? Last time we talked you mentioned wanting more exposure to cross-team planning."},
+    {"speaker": "Priya Nandakumar", "text": "I've gotten some of that through the Q3 roadmap session, which was useful. I'd like more of it, maybe eventually owning a roadmap area end to end rather than just contributing to Jae-won's or others' plans."},
+    {"speaker": "Derek Osei", "text": "That's a fair ask given where you are. Let's target having you own the SSO roadmap area end to end as a concrete example, starting now, not just contributing to it."},
+    {"speaker": "Priya Nandakumar", "text": "I'd like that a lot, thank you."},
+    {"speaker": "Derek Osei", "text": "One thing I want your read on - Tomasz mentioned in passing he's interested in moving toward more automation and tooling work rather than pure manual QA. Have you sensed that too?"},
+    {"speaker": "Priya Nandakumar", "text": "A little, yeah. I haven't had a direct conversation with him about it though."},
+    {"speaker": "Derek Osei", "text": "Could you check in with him this week and get a clearer sense of what he wants? I don't want to lose him to another team looking for that if we could offer it here."},
+    {"speaker": "Priya Nandakumar", "text": "Good idea, I'll set up time with him this week."},
+    {"speaker": "Derek Osei", "text": "Thanks Priya, this was useful."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "The backend team is stretched thin between SSO and regular maintenance, and hiring one more engineer is being considered",
+      "Priya will own the SSO roadmap area end to end as a growth opportunity",
+      "Tomasz may be interested in moving toward automation and tooling work",
+      "Priya will check in with Tomasz this week to understand his career interests"
+    ],
+    "action_items": [
+      {"owner": "Priya Nandakumar", "task": "Draft a backend engineer role description by Friday"},
+      {"owner": "Priya Nandakumar", "task": "Check in with Tomasz this week about his interest in automation and tooling work"}
+    ],
+    "decisions": [
+      "Open a requisition for one more backend engineer",
+      "Priya will own the SSO roadmap area end to end"
+    ],
+    "open_questions": [
+      "Is Tomasz interested enough in automation and tooling work that the team should look for ways to offer him that?"
+    ]
+  }
+}

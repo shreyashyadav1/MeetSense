@@ -1,0 +1,41 @@
+{
+  "meeting_id": "fernwood-standup-01",
+  "meeting_type": "standup",
+  "company": "Fernwood Health",
+  "title": "Fernwood Health Standup - HIPAA Audit Prep",
+  "duration_minutes": 9,
+  "participants": ["Amara Okafor", "Liam Fitzgerald", "Ines Alvarez"],
+  "transcript": [
+    {"speaker": "Amara Okafor", "text": "Morning. The HIPAA audit is in three weeks, so let's use standup to track prep. Liam, where's the access log review?"},
+    {"speaker": "Liam Fitzgerald", "text": "About halfway. I found two service accounts with broader database permissions than they need - the billing export job can read the entire patients table when it only needs three columns."},
+    {"speaker": "Amara Okafor", "text": "That needs to be locked down before the audit. Can you scope it down today?"},
+    {"speaker": "Liam Fitzgerald", "text": "Yes, I'll create a restricted view and repoint the export job at it today."},
+    {"speaker": "Amara Okafor", "text": "Thanks. Ines, how's the policy documentation coming?"},
+    {"speaker": "Ines Alvarez", "text": "The access control policy doc is done. I'm still waiting on legal to review the breach notification procedure - I followed up with them yesterday."},
+    {"speaker": "Amara Okafor", "text": "Let's get a hard date from legal, not just a follow-up. Can you push for a response by Friday?"},
+    {"speaker": "Ines Alvarez", "text": "I'll ask for a commitment by Friday when I message them today."},
+    {"speaker": "Amara Okafor", "text": "I'm auditing our encryption-at-rest settings across all three databases this week and will report back Thursday."},
+    {"speaker": "Liam Fitzgerald", "text": "One question - does the audit cover the staging database too, or just production?"},
+    {"speaker": "Amara Okafor", "text": "I actually don't know, let me check with the auditor and confirm scope."},
+    {"speaker": "Amara Okafor", "text": "Okay, let's keep moving. Thanks all."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Found overly broad database permissions on the billing export service account",
+      "Access control policy documentation is complete; breach notification procedure awaits legal review",
+      "Encryption-at-rest settings are being audited across all three databases",
+      "It's unclear whether the audit covers the staging database"
+    ],
+    "action_items": [
+      {"owner": "Liam Fitzgerald", "task": "Scope down the billing export service account to a restricted view today"},
+      {"owner": "Ines Alvarez", "task": "Get a commitment from legal for a Friday review of the breach notification procedure"},
+      {"owner": "Amara Okafor", "task": "Audit encryption-at-rest settings across all three databases and report back Thursday"}
+    ],
+    "decisions": [
+      "Push legal for a hard Friday deadline instead of an open-ended follow-up"
+    ],
+    "open_questions": [
+      "Does the HIPAA audit scope include the staging database or only production?"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "meeting_id": "meridian-sales-call-negotiation",
+  "meeting_type": "sales_call",
+  "company": "Meridian Freight",
+  "title": "Meridian Freight / Halden Logistics - Negotiation Call",
+  "duration_minutes": 27,
+  "participants": ["Carlos Reyes", "Yuki Tanaka", "Linda Park", "Marcus Webb"],
+  "transcript": [
+    {"speaker": "Carlos Reyes", "text": "Thanks for hopping back on. Since we last spoke, Yuki confirmed the Freightline integration is doable with a moderate custom connector, not a heavy lift."},
+    {"speaker": "Yuki Tanaka", "text": "Right - Freightline exposes a documented API, just not one we'd pre-built. I'm estimating three weeks of integration work, which still fits inside your two-month target alongside the carrier onboarding."},
+    {"speaker": "Marcus Webb", "text": "That's good news. What would that custom connector cost on top of your standard pricing?"},
+    {"speaker": "Carlos Reyes", "text": "We'd typically charge a one-time integration fee for custom connectors - for this scope I can offer $12,000, which is discounted from our usual $18,000 rate as a new-customer incentive."},
+    {"speaker": "Linda Park", "text": "We were hoping to stay under $10,000 for one-time fees given this is a one-year pilot commitment, not a multi-year deal."},
+    {"speaker": "Carlos Reyes", "text": "I can go to $10,000 if we agree to a two-year term instead of evaluating year to year - that gives us the volume to justify the discount."},
+    {"speaker": "Linda Park", "text": "Let me think about the two-year term - I'd need to check budget approval for that, since one-year was already approved."},
+    {"speaker": "Marcus Webb", "text": "Separately, can the custom connector be reused if we later add a second facility on Freightline?"},
+    {"speaker": "Yuki Tanaka", "text": "Yes, the connector's designed at the account level, not per-facility, so a second facility would just need additional configuration, not new development."},
+    {"speaker": "Carlos Reyes", "text": "Good to confirm. Linda, when do you expect to know on the two-year term?"},
+    {"speaker": "Linda Park", "text": "I should have an answer by Friday."},
+    {"speaker": "Carlos Reyes", "text": "Great, let's plan to finalize pricing and get a contract over by early next week assuming Friday goes well."},
+    {"speaker": "Marcus Webb", "text": "One last open question from our side - what does onboarding support look like in the first month after go-live? Is there dedicated support, or standard tickets only?"},
+    {"speaker": "Carlos Reyes", "text": "For a deal this size we'd include a dedicated onboarding specialist for the first 30 days. I'll put that in writing in the contract."},
+    {"speaker": "Linda Park", "text": "That helps, thank you. Talk Friday."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "The Freightline integration is confirmed feasible with about three weeks of custom connector work",
+      "Pricing negotiation centers on a one-time integration fee, discounted to $10,000 if Halden commits to a two-year term",
+      "Halden needs budget approval for a two-year term, expected by Friday",
+      "Meridian will include a dedicated onboarding specialist for the first 30 days after go-live"
+    ],
+    "action_items": [
+      {"owner": "Linda Park", "task": "Get budget approval for a two-year term and respond by Friday"},
+      {"owner": "Carlos Reyes", "task": "Prepare the contract with the discounted integration fee and dedicated onboarding support, pending Friday's answer"}
+    ],
+    "decisions": [
+      "Offer Halden a $10,000 discounted integration fee in exchange for a two-year term instead of one-year",
+      "Include a dedicated onboarding specialist for Halden's first 30 days after go-live"
+    ],
+    "open_questions": [
+      "Will Halden commit to a two-year term to unlock the discounted integration fee, and will they confirm by Friday?"
+    ]
+  }
+}
