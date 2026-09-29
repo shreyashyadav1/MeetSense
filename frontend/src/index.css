@@ -398,6 +398,44 @@ input, textarea {
   font-size: 12.5px;
 }
 
+.alert--info {
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+/* ===== OFFLINE BANNER ===== */
+.offline-banner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 12px;
+}
+
+.offline-banner .alert {
+  margin-bottom: 0;
+}
+
+.offline-banner__dismiss {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.offline-banner__dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+  .offline-banner {
+    padding: 0 16px 12px;
+  }
+}
+
 /* ===== LOADING & ERROR STATES ===== */
 .loading-state {
   display: flex;

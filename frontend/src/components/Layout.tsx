@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Brain, LayoutDashboard } from 'lucide-react';
+import { OfflineBanner } from './OfflineBanner';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -43,6 +44,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeMeetingId }) => 
             )}
           </div>
         </div>
+        <OfflineBanner />
       </nav>
 
       <main className="main-content">
