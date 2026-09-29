@@ -1,101 +1,50 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { MeetingSocket } from '../services/websocket';
-import type { TranscriptSegment, WSMessage, ConnectionStatus } from '../types';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { apiHealthMonitor } from '../services/apiHealth';
+import { MeetingSocket, meetingStreamUrl, type MeetingSocketSnapshot } from '../services/websocket';
 
-interface UseMeetingSocketResult {
-  segments: TranscriptSegment[];
-  interimSegment: TranscriptSegment | null;
-  isConnected: boolean;
-  connectionStatus: ConnectionStatus;
+export interface UseMeetingSocketResult extends MeetingSocketSnapshot {
+  /** Sends audio when a session is live; chunks are dropped otherwise. */
   sendAudio: (chunk: Blob) => void;
+  /** Flushes and ends the server session; resolves when it has closed. */
+  stop: () => Promise<void>;
+  /** Starts a new session after a stop or failure (the Retry action). No-op while connected. */
+  connect: () => void;
 }
 
+/**
+ * Live transcription stream for a meeting. Connects on mount, follows the
+ * reconnect policy in MeetingSocket and disconnects on unmount.
+ */
 export function useMeetingSocket(meetingId: string): UseMeetingSocketResult {
-  const [segments, setSegments] = useState<TranscriptSegment[]>([]);
-  const [interimSegment, setInterimSegment] = useState<TranscriptSegment | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting');
-  const socketRef = useRef<MeetingSocket | null>(null);
+  const url = meetingStreamUrl(meetingId);
+  const [socket, setSocket] = useState(() => new MeetingSocket(url));
+  if (socket.url !== url) {
+    // Switched meetings: start from a clean client rather than mixing transcripts.
+    setSocket(new MeetingSocket(url));
+  }
 
-  const handleMessage = useCallback((msg: WSMessage) => {
-    switch (msg.type) {
-      case 'transcript': {
-        setConnectionStatus('connected');
-        const seg = msg.data;
-
-        if (seg.is_final === false) {
-          // Interim result — update the in-progress ghost entry
-          setInterimSegment(seg);
-        } else {
-          // Final (or legacy without the flag) — commit to the segment list
-          setSegments((prev) => {
-            if (prev.some((s) => s.id === seg.id)) return prev;
-            return [...prev, seg];
-          });
-          setInterimSegment(null);
-        }
-        break;
-      }
-
-      case 'status':
-        if (msg.data.status === 'connected') {
-          setConnectionStatus('connected');
-        } else if (msg.data.status === 'ended') {
-          setConnectionStatus('disconnected');
-        }
-        break;
-
-      case 'pong':
-        setConnectionStatus('connected');
-        break;
-
-      case 'error':
-        console.error('[useMeetingSocket] Server error:', msg.data.message);
-        setConnectionStatus('error');
-        break;
-
-      default:
-        break;
-    }
-  }, []);
+  const snapshot = useSyncExternalStore(socket.subscribe, socket.getSnapshot);
 
   useEffect(() => {
-    if (!meetingId) return;
-
-    setConnectionStatus('connecting');
-    setSegments([]);
-    setInterimSegment(null);
-
-    const socket = new MeetingSocket(meetingId, handleMessage);
-    socketRef.current = socket;
     socket.connect();
+    return socket.disconnect;
+  }, [socket]);
 
-    // Poll native WebSocket readyState to detect open/close transitions
-    const pollTimer = setInterval(() => {
-      if (!socketRef.current) return;
-      const state = socketRef.current.readyState;
-      if (state === WebSocket.OPEN) {
-        setConnectionStatus((prev) => (prev === 'connecting' ? 'connected' : prev));
-      } else if (state === WebSocket.CLOSED) {
-        setConnectionStatus((prev) => (prev === 'connected' ? 'disconnected' : prev));
-      }
-    }, 500);
-
-    return () => {
-      clearInterval(pollTimer);
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [meetingId, handleMessage]);
-
-  const sendAudio = useCallback((chunk: Blob) => {
-    socketRef.current?.sendBinary(chunk);
-  }, []);
+  // A stream that starts reconnecting or gives up entirely is a strong signal
+  // that the server itself may be unreachable; recheck its health right away
+  // instead of waiting for the next scheduled poll, so the offline banner can
+  // explain what's going on rather than leaving the failure unexplained.
+  const status = snapshot.status;
+  useEffect(() => {
+    if (status === 'reconnecting' || status === 'failed') {
+      apiHealthMonitor.checkNow();
+    }
+  }, [status]);
 
   return {
-    segments,
-    interimSegment,
-    isConnected: connectionStatus === 'connected',
-    connectionStatus,
-    sendAudio,
+    ...snapshot,
+    sendAudio: socket.sendAudio,
+    stop: socket.stop,
+    connect: socket.connect,
   };
 }

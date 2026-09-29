@@ -1,57 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, MessageSquare, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { format, parseISO, differenceInSeconds } from 'date-fns';
 import { Layout } from '../components/Layout';
 import { TranscriptPanel } from '../components/TranscriptPanel';
 import { MeetingStatusBadge } from '../components/StatusBadge';
-import { getMeeting, getTranscript } from '../services/api';
 import { InsightsPanel } from '../components/InsightsPanel';
-import type { Meeting, TranscriptSegment } from '../types';
+import { useRequest } from '../hooks/useRequest';
+import { getMeeting, getTranscript } from '../services/api';
+import { getApiErrorMessage } from '../services/errors';
+import { formatDateTime, formatDuration } from '../utils/format';
 
-function formatDuration(startedAt: string, endedAt?: string): string {
-  const start = parseISO(startedAt);
-  const end = endedAt ? parseISO(endedAt) : new Date();
-  const totalSeconds = differenceInSeconds(end, start);
-
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
+const loadMeetingDetails = (meetingId: string) =>
+  Promise.all([getMeeting(meetingId), getTranscript(meetingId)]);
 
 export const MeetingDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
+  // Keyed so that every piece of per-meeting state starts fresh when the id changes.
+  return <MeetingDetailsView key={id} meetingId={id} />;
+};
+
+const MeetingDetailsView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   const navigate = useNavigate();
+  const details = useRequest(meetingId, loadMeetingDetails);
 
-  const meetingId = id ?? '';
-
-  const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [segments, setSegments] = useState<TranscriptSegment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!meetingId) return;
-
-    setIsLoading(true);
-    Promise.all([getMeeting(meetingId), getTranscript(meetingId)])
-      .then(([meetingData, transcriptData]) => {
-        setMeeting(meetingData);
-        setSegments(transcriptData);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('[MeetingDetails] Failed to load:', err);
-        setError('Could not load meeting details. Check that the backend is running.');
-      })
-      .finally(() => setIsLoading(false));
-  }, [meetingId]);
-
-  if (isLoading) {
+  if (details.status === 'loading') {
     return (
       <Layout>
         <div className="loading-state loading-state--page">
@@ -62,13 +34,18 @@ export const MeetingDetails: React.FC = () => {
     );
   }
 
-  if (error || !meeting) {
+  if (details.status === 'error') {
     return (
       <Layout>
         <div className="error-state">
           <AlertCircle size={32} />
           <h2>Could not load meeting</h2>
-          <p>{error ?? 'Meeting not found.'}</p>
+          <p>
+            {getApiErrorMessage(details.error, {
+              fallback: 'Could not load meeting details. Please try again.',
+              byStatus: { 404: 'This meeting does not exist.' },
+            })}
+          </p>
           <button className="btn btn--primary" onClick={() => navigate('/')}>
             Back to Dashboard
           </button>
@@ -77,13 +54,8 @@ export const MeetingDetails: React.FC = () => {
     );
   }
 
-  let formattedDate = '';
-  try {
-    formattedDate = format(parseISO(meeting.started_at), 'EEEE, MMMM d, yyyy · h:mm a');
-  } catch {
-    formattedDate = meeting.started_at;
-  }
-
+  const [meeting, segments] = details.data;
+  const formattedDate = formatDateTime(meeting.started_at, 'EEEE, MMMM d, yyyy · h:mm a');
   const duration = formatDuration(meeting.started_at, meeting.ended_at);
 
   return (
@@ -133,9 +105,10 @@ export const MeetingDetails: React.FC = () => {
                 <Sparkles size={18} />
                 <h3 className="insights-card__title">AI Insights</h3>
               </div>
-              <div style={{ padding: '1rem' }}>
+              <div className="insights-card__body">
                 <InsightsPanel
-                  meetingId={meetingId}
+                  meetingId={meeting.id}
+                  meetingStatus={meeting.status}
                   hasTranscript={segments.length > 0}
                 />
               </div>

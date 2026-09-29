@@ -1,46 +1,54 @@
 import axios from 'axios';
+import { apiConfig } from '../config';
 import type { Meeting, TranscriptSegment, MeetingInsights } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
-
-const client = axios.create({
-  baseURL: API_BASE,
+export const apiClient = axios.create({
+  baseURL: apiConfig.apiBaseUrl,
+  timeout: 30_000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+const meetingPath = (id: string) => `/api/meetings/${encodeURIComponent(id)}`;
+
 export async function createMeeting(title: string): Promise<Meeting> {
-  const response = await client.post<Meeting>('/api/meetings', { title });
+  const response = await apiClient.post<Meeting>('/api/meetings', { title });
   return response.data;
 }
 
 export async function listMeetings(): Promise<Meeting[]> {
-  const response = await client.get<Meeting[]>('/api/meetings');
+  const response = await apiClient.get<Meeting[]>('/api/meetings');
   return response.data;
 }
 
 export async function getMeeting(id: string): Promise<Meeting> {
-  const response = await client.get<Meeting>(`/api/meetings/${id}`);
+  const response = await apiClient.get<Meeting>(meetingPath(id));
   return response.data;
 }
 
 export async function endMeeting(id: string): Promise<Meeting> {
-  const response = await client.post<Meeting>(`/api/meetings/${id}/end`);
+  const response = await apiClient.post<Meeting>(`${meetingPath(id)}/end`);
   return response.data;
 }
 
 export async function getTranscript(id: string): Promise<TranscriptSegment[]> {
-  const response = await client.get<TranscriptSegment[]>(`/api/meetings/${id}/transcript`);
+  const response = await apiClient.get<TranscriptSegment[]>(`${meetingPath(id)}/transcript`);
   return response.data;
 }
 
-export async function summarizeMeeting(id: string): Promise<MeetingInsights> {
-  const response = await client.post<MeetingInsights>(`/api/meetings/${id}/summarize`);
+/** Generates insights; `force` regenerates them even if saved ones exist. */
+export async function summarizeMeeting(
+  id: string,
+  { force = false }: { force?: boolean } = {},
+): Promise<MeetingInsights> {
+  const response = await apiClient.post<MeetingInsights>(`${meetingPath(id)}/summarize`, undefined, {
+    params: force ? { force: true } : undefined,
+  });
   return response.data;
 }
 
 export async function getInsights(id: string): Promise<MeetingInsights> {
-  const response = await client.get<MeetingInsights>(`/api/meetings/${id}/insights`);
+  const response = await apiClient.get<MeetingInsights>(`${meetingPath(id)}/insights`);
   return response.data;
 }
