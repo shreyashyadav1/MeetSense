@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { apiHealthMonitor } from '../services/apiHealth';
 import { MeetingSocket, meetingStreamUrl, type MeetingSocketSnapshot } from '../services/websocket';
 
 export interface UseMeetingSocketResult extends MeetingSocketSnapshot {
@@ -28,6 +29,17 @@ export function useMeetingSocket(meetingId: string): UseMeetingSocketResult {
     socket.connect();
     return socket.disconnect;
   }, [socket]);
+
+  // A stream that starts reconnecting or gives up entirely is a strong signal
+  // that the server itself may be unreachable; recheck its health right away
+  // instead of waiting for the next scheduled poll, so the offline banner can
+  // explain what's going on rather than leaving the failure unexplained.
+  const status = snapshot.status;
+  useEffect(() => {
+    if (status === 'reconnecting' || status === 'failed') {
+      apiHealthMonitor.checkNow();
+    }
+  }, [status]);
 
   return {
     ...snapshot,

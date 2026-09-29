@@ -1,10 +1,16 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { apiHealthMonitor } from '../services/apiHealth';
 import { FakeWebSocket, transcriptFrame } from '../test/fakeWebSocket';
 import { useMeetingSocket } from './useMeetingSocket';
 
+vi.mock('../services/apiHealth', () => ({
+  apiHealthMonitor: { checkNow: vi.fn() },
+}));
+
 beforeEach(() => {
   FakeWebSocket.install();
+  vi.mocked(apiHealthMonitor.checkNow).mockClear();
 });
 
 describe('useMeetingSocket', () => {
@@ -39,5 +45,20 @@ describe('useMeetingSocket', () => {
     expect(first.closedByClient).toBe(1000);
     expect(FakeWebSocket.latest.url).toMatch(/meeting-2/);
     expect(result.current.segments).toEqual([]);
+  });
+
+  it('rechecks API health immediately when the stream disconnects unexpectedly', () => {
+    const { result } = renderHook(() => useMeetingSocket('meeting-1'));
+    act(() => {
+      FakeWebSocket.latest.accept();
+    });
+    expect(apiHealthMonitor.checkNow).not.toHaveBeenCalled();
+
+    act(() => {
+      FakeWebSocket.latest.serverClose(1006);
+    });
+
+    expect(result.current.status).toBe('reconnecting');
+    expect(apiHealthMonitor.checkNow).toHaveBeenCalledTimes(1);
   });
 });
