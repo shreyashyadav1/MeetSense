@@ -68,9 +68,14 @@ class Settings(BaseSettings):
 
     # --- AI insights ------------------------------------------------------
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    # Groq retires models over time (https://console.groq.com/docs/deprecations);
+    # override GROQ_MODEL instead of editing code.
+    groq_model: str = "openai/gpt-oss-120b"
+    # reasoning_effort for reasoning models such as gpt-oss; blank for models without it.
+    groq_reasoning_effort: Literal["low", "medium", "high", ""] = "low"
     groq_temperature: float = Field(default=0.3, ge=0, le=2)
-    groq_max_tokens: int = Field(default=2048, gt=0)
+    # Includes the reasoning tokens gpt-oss spends before it answers.
+    groq_max_tokens: int = Field(default=4096, gt=0)
     groq_timeout_seconds: float = Field(default=30, gt=0)
     # Longer transcripts are shortened (start and end kept) before prompting.
     ai_max_transcript_chars: int = Field(default=32_000, ge=1_000)

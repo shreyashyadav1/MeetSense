@@ -200,6 +200,8 @@ async def _request_insights(
 
 async def _complete(messages: list[ChatCompletionMessageParam]) -> str | None:
     """Run one chat completion in JSON mode; None if Groq rejected the JSON it generated."""
+    effort = settings.groq_reasoning_effort
+    reasoning = {"reasoning_effort": effort} if effort else {}
     try:
         response = await _get_client().chat.completions.create(
             model=settings.groq_model,
@@ -207,6 +209,7 @@ async def _complete(messages: list[ChatCompletionMessageParam]) -> str | None:
             temperature=settings.groq_temperature,
             max_tokens=settings.groq_max_tokens,
             response_format={"type": "json_object"},
+            **reasoning,
         )
     except groq.BadRequestError as error:
         if _is_json_validation_failure(error):

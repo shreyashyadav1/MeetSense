@@ -49,6 +49,34 @@ async def test_valid_reply_becomes_insights(fake_groq: type[FakeGroq]) -> None:
     assert "[00:07] Speaker 1: We discussed the roadmap. (1)" in request["messages"][1]["content"]
 
 
+def test_default_model_is_a_supported_reasoning_model() -> None:
+    # llama-3.3-70b-versatile was shut down for free and developer tiers on 2026-08-16.
+    fields = type(settings).model_fields
+    assert fields["groq_model"].default == "openai/gpt-oss-120b"
+    assert fields["groq_reasoning_effort"].default == "low"
+
+
+async def test_reasoning_effort_is_sent_when_set(
+    fake_groq: type[FakeGroq], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "groq_reasoning_effort", "medium")
+    fake_groq.reset(VALID_INSIGHTS)
+    await generate_insights("m1", "Roadmap", segments(2))
+    (request,) = fake_groq.requests_made()
+    assert request["reasoning_effort"] == "medium"
+
+
+async def test_reasoning_effort_is_omitted_when_blank(
+    fake_groq: type[FakeGroq], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Models without reasoning support reject the parameter.
+    monkeypatch.setattr(settings, "groq_reasoning_effort", "")
+    fake_groq.reset(VALID_INSIGHTS)
+    await generate_insights("m1", "Roadmap", segments(2))
+    (request,) = fake_groq.requests_made()
+    assert "reasoning_effort" not in request
+
+
 @pytest.mark.parametrize(
     "bad_reply",
     [
