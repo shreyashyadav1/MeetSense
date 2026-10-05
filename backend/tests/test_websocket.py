@@ -139,7 +139,8 @@ def test_reconnect_continues_sequence_script_and_clock(
     assert [s["sequence"] for s in stored] == [1, 2, 3, 4]
     timestamps = [s["timestamp"] for s in stored]
     assert timestamps[0] >= 0.2
-    assert timestamps[2] >= timestamps[1] + 0.1
+    # Timestamps are rounded to 10 ms, so allow one rounding step under the pause.
+    assert timestamps[2] - timestamps[1] >= 0.09
 
 
 def test_a_second_viewer_shares_the_single_source(
