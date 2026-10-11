@@ -15,7 +15,9 @@ GROQ_API_KEY=... python -m evals.run_eval --fixture evals/fixtures/orbitlytics-s
 
 Needs `GROQ_API_KEY` and makes real calls to Groq (one per fixture, plus a
 retry for any fixture whose first reply isn't valid JSON - the same
-one-retry policy `generate_insights` uses). Without the key, it prints a
+one-retry policy `generate_insights` uses, with the same model, temperature,
+token limit and reasoning effort; a test fails if those ever diverge from
+production). Without the key, it prints a
 clear message to stderr and exits 0 rather than failing - safe to leave out
 of CI or a normal dev environment. It never runs from the test suite; the
 scoring and orchestration logic is unit-tested with a fake model in

@@ -4,9 +4,11 @@
 returns ``MeetingInsights`` - the schema stored in Postgres and served over
 the API - which has no room for token usage or per-call latency. Rather than
 grow that schema for an offline tool, this mirrors production's prompt and
-one-retry-on-bad-JSON policy (reusing its constants directly, so the two
-can't drift silently) closely enough to evaluate what a user would actually
-see, while returning the numbers the harness needs.
+one-retry-on-bad-JSON policy closely enough to evaluate what a user would
+actually see, while returning the numbers the harness needs. The prompts are
+reused directly; the request options (model, temperature, token limit,
+reasoning effort) are repeated here, so ``tests/test_evals_groq_client.py``
+compares them against ``generate_insights`` and fails if the two diverge.
 """
 
 from __future__ import annotations
@@ -79,12 +81,16 @@ async def request_insights(
 async def _complete(
     client: groq.AsyncGroq, messages: list[ChatCompletionMessageParam]
 ) -> tuple[str | None, tuple[int, int]]:
+    # Blank means the model has no reasoning support and would reject the parameter.
+    effort = settings.groq_reasoning_effort
+    reasoning = {"reasoning_effort": effort} if effort else {}
     response = await client.chat.completions.create(
         model=settings.groq_model,
         messages=messages,
         temperature=settings.groq_temperature,
         max_tokens=settings.groq_max_tokens,
         response_format={"type": "json_object"},
+        **reasoning,
     )
     usage = getattr(response, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
