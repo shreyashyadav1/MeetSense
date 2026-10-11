@@ -38,7 +38,7 @@ export function getApiErrorMessage(error: unknown, { fallback, byStatus = {} }: 
   if (!error.response) {
     return error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
       ? 'The server took too long to respond. Please try again.'
-      : "Can't reach the MeetSense server. Check your connection and try again.";
+      : 'Can’t reach the MeetSense server. Check your connection and try again.';
   }
 
   const { status, data } = error.response;

@@ -39,7 +39,7 @@ describe('getApiErrorMessage', () => {
   });
 
   it('distinguishes unreachable servers and timeouts', () => {
-    expect(getApiErrorMessage(networkError(), messages)).toMatch(/can't reach/i);
+    expect(getApiErrorMessage(networkError(), messages)).toMatch(/can’t reach/i);
     expect(getApiErrorMessage(networkError(AxiosError.ECONNABORTED), messages)).toMatch(/too long/);
   });
 
