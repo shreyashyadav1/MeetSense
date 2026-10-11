@@ -227,7 +227,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {createError && (
-              <div className="notice notice--danger">
+              <div className="notice notice--danger" role="alert">
                 <AlertCircle size={18} aria-hidden="true" />
                 <p className="notice__body">{createError}</p>
               </div>

@@ -2,6 +2,8 @@ import React from 'react';
 import type { SpeakerSummary } from '../utils/speakers';
 import './SpeakerShare.css';
 
+const percent = new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 0 });
+
 interface SpeakerShareProps {
   speakers: readonly SpeakerSummary[];
 }
@@ -13,7 +15,6 @@ interface SpeakerShareProps {
 export const SpeakerShare: React.FC<SpeakerShareProps> = ({ speakers }) => (
   <ul className="speaker-share">
     {speakers.map((speaker) => {
-      const percent = Math.round(speaker.share * 100);
       return (
         <li
           key={speaker.speaker || 'unknown'}
@@ -25,7 +26,8 @@ export const SpeakerShare: React.FC<SpeakerShareProps> = ({ speakers }) => (
             <span style={{ transform: `scaleX(${speaker.share})` }} />
           </span>
           <span className="speaker-share__value">
-            {percent}%<span className="visually-hidden"> of words</span>
+            {percent.format(speaker.share)}
+            <span className="visually-hidden"> of words</span>
           </span>
         </li>
       );
