@@ -1,0 +1,52 @@
+.offline-banner {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--warn-rule);
+  background: var(--warn-wash);
+  color: var(--warn-ink);
+}
+
+.offline-banner__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: calc(77.5rem + 2 * var(--page-gutter));
+  margin: 0 auto;
+  padding: var(--space-3) var(--page-gutter);
+}
+
+.offline-banner__inner > svg {
+  margin-top: 0.15em;
+}
+
+.offline-banner__text {
+  flex: 1;
+  min-width: 0;
+  max-width: 48rem;
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+.offline-banner__text a {
+  font-weight: 700;
+  text-underline-offset: 0.15em;
+}
+
+.offline-banner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) calc(var(--space-2) * -1) auto;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: inherit;
+  transition: background-color var(--duration-state) ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .offline-banner__dismiss:hover {
+    background: color-mix(in oklab, var(--warn-ink) 10%, transparent);
+  }
+}

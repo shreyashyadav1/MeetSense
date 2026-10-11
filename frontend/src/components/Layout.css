@@ -1,0 +1,139 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.layout--fill {
+  height: 100dvh;
+  min-height: 0;
+}
+
+.layout__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.layout__main:focus {
+  outline: none;
+}
+
+.layout--fill .layout__main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ===== Skip link ===== */
+.skip-link {
+  position: absolute;
+  z-index: var(--z-skip-link);
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* ===== App bar ===== */
+.appbar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+}
+
+.appbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  max-width: calc(77.5rem + 2 * var(--page-gutter));
+  height: var(--appbar-height);
+  margin: 0 auto;
+  padding: 0 var(--page-gutter);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.appbar__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.appbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-s);
+  color: var(--graphite);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-sm);
+  font-weight: 550;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-state) ease,
+    color var(--duration-state) ease;
+}
+
+.appbar__link[aria-current='page'] {
+  background: var(--shelf-strong);
+  color: var(--ink);
+}
+
+.appbar__live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .appbar__link:hover {
+    background: var(--shelf);
+    color: var(--ink);
+  }
+}
+
+@media (max-width: 599px) {
+  .appbar__inner {
+    gap: var(--space-3);
+    justify-content: space-between;
+  }
+
+  .appbar__link {
+    padding: 0 var(--space-2);
+  }
+}
+
+@media (pointer: coarse) {
+  .appbar__link {
+    min-height: 2.75rem;
+  }
+}

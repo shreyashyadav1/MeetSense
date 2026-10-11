@@ -1,54 +1,59 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Brain, LayoutDashboard } from 'lucide-react';
+import { LogoMark } from './Logo';
 import { OfflineBanner } from './OfflineBanner';
+import './Layout.css';
 
 interface LayoutProps {
   children: React.ReactNode;
   activeMeetingId?: string;
+  /** The page fills the window and scrolls inside its own panels (the live meeting room). */
+  fill?: boolean;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeMeetingId }) => {
-  const location = useLocation();
-
-  const isActive = (path: string) => location.pathname === path;
+export const Layout: React.FC<LayoutProps> = ({ children, activeMeetingId, fill = false }) => {
+  const { pathname } = useLocation();
+  const liveHref = activeMeetingId ? `/meeting/${activeMeetingId}/live` : null;
 
   return (
-    <div className="layout">
-      <nav className="navbar">
-        <div className="navbar__inner">
-          <Link to="/" className="navbar__logo">
-            <Brain size={22} className="navbar__logo-icon" />
-            <span className="navbar__logo-text">MeetSense AI</span>
+    <div className={`layout${fill ? ' layout--fill' : ''}`}>
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+
+      <header className="appbar">
+        <div className="appbar__inner">
+          <Link to="/" className="wordmark" translate="no">
+            <LogoMark />
+            MeetSense
           </Link>
 
-          <div className="navbar__links">
+          <nav className="appbar__nav" aria-label="Main">
             <Link
               to="/"
-              className={`navbar__link ${isActive('/') ? 'navbar__link--active' : ''}`}
+              className="appbar__link"
+              aria-current={pathname === '/' ? 'page' : undefined}
             >
-              <LayoutDashboard size={16} />
-              Dashboard
+              Meetings
             </Link>
-
-            {activeMeetingId && (
+            {liveHref && (
               <Link
-                to={`/meeting/${activeMeetingId}/live`}
-                className={`navbar__link navbar__link--live ${
-                  location.pathname.includes('/live') ? 'navbar__link--active' : ''
-                }`}
+                to={liveHref}
+                className="appbar__link"
+                aria-current={pathname === liveHref ? 'page' : undefined}
               >
-                <span className="navbar__live-dot" />
-                Live Meeting
+                <span className="appbar__live-dot" aria-hidden="true" />
+                Live meeting
               </Link>
             )}
-          </div>
+          </nav>
         </div>
-        <OfflineBanner />
-      </nav>
+      </header>
 
-      <main className="main-content">
-        <div className="content-wrapper">{children}</div>
+      <OfflineBanner />
+
+      <main id="main" className="layout__main" tabIndex={-1}>
+        {children}
       </main>
     </div>
   );

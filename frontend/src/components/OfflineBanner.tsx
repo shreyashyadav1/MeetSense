@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { CloudOff, X } from 'lucide-react';
 import { useApiHealth } from '../hooks/useApiHealth';
+import './OfflineBanner.css';
 
 const REPO_URL = 'https://github.com/shreyashyadav1/MeetSense';
 
@@ -25,23 +26,24 @@ export const OfflineBanner: React.FC = () => {
   if (!offline || dismissed) return null;
 
   return (
-    <div className="offline-banner">
-      <div className="alert alert--info" role="status">
-        <span>
-          The live demo&rsquo;s server is offline right now, so meetings can&rsquo;t load and live
-          transcription can&rsquo;t connect. The source code, tests and screenshots are on{' '}
-          <a href={REPO_URL} target="_blank" rel="noreferrer">
+    <div className="offline-banner" role="status">
+      <div className="offline-banner__inner">
+        <CloudOff size={18} aria-hidden="true" />
+        <p className="offline-banner__text">
+          The demo server is offline right now, so meetings can&rsquo;t load and live transcripts
+          can&rsquo;t connect. The code, tests and screenshots are on{' '}
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
           .
-        </span>
+        </p>
         <button
           type="button"
           className="offline-banner__dismiss"
           onClick={() => setDismissed(true)}
           aria-label="Dismiss offline notice"
         >
-          <X size={14} aria-hidden="true" />
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
     </div>
