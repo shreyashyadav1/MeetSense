@@ -1,235 +1,245 @@
+"""WebSocket endpoint for live transcription (protocol: ``app/models/ws.py``)."""
+
+from __future__ import annotations
+
 import asyncio
-import json
+import contextlib
 import logging
+from collections import Counter
+from dataclasses import dataclass
+from typing import Literal
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import ValidationError
+from starlette.types import Message
 
-from app.services.smart_meeting_store import smart_meeting_store as meeting_store
-from app.services.redis_service import publish_segment, subscribe_segments
 from app.core.config import settings
+from app.models.schemas import Meeting
+from app.models.ws import (
+    ConnectedMessage,
+    ErrorCode,
+    ErrorMessage,
+    PingRequest,
+    PongMessage,
+    StatusMessage,
+    client_message_adapter,
+)
+from app.services.redis_service import get_redis, redis_available
+from app.services.smart_meeting_store import smart_meeting_store
+from app.services.transcription import TranscriptionUnavailableError
+from app.services.transcription_hub import (
+    CloseRequest,
+    MeetingSession,
+    Subscriber,
+    transcription_hub,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# How long to wait for queued messages (and the close frame) to reach the client.
+SEND_DRAIN_TIMEOUT_SECONDS = 2.0
 
-# ---------------------------------------------------------------------------
-# Redis-backed tasks (used when Redis is reachable)
-# ---------------------------------------------------------------------------
+# Open sockets per client IP, for this process.
+_open_connections: Counter[str] = Counter()
 
-async def _publish_task(transcript_iter, meeting_id: str, stop_event: asyncio.Event) -> None:
-    """Reads transcript segments and publishes each to Redis."""
-    try:
-        async for segment in transcript_iter:
-            if stop_event.is_set():
-                return
-            if segment.is_final:
-                await meeting_store.add_segment(segment)
-            await publish_segment(
-                meeting_id,
-                json.dumps({"type": "transcript", "data": segment.model_dump()}),
-            )
-        if not stop_event.is_set():
-            await publish_segment(
-                meeting_id,
-                json.dumps({"type": "status", "data": {"status": "stream_complete", "meeting_id": meeting_id}}),
-            )
-    except asyncio.CancelledError:
-        pass
-    except Exception as exc:
-        logger.exception("Publish task error for %s: %s", meeting_id, exc)
-        try:
-            await publish_segment(meeting_id, json.dumps({"type": "error", "data": {"message": str(exc)}}))
-        except Exception:
-            pass
-
-
-async def _subscribe_task(websocket: WebSocket, meeting_id: str, stop_event: asyncio.Event) -> None:
-    """Reads from Redis pub/sub and forwards messages to the WebSocket client."""
-    ps = await subscribe_segments(meeting_id)
-    try:
-        async for message in ps.listen():
-            if stop_event.is_set():
-                break
-            if message["type"] == "message":
-                try:
-                    await websocket.send_text(message["data"])
-                except (WebSocketDisconnect, RuntimeError):
-                    break
-    except asyncio.CancelledError:
-        pass
-    except Exception as exc:
-        logger.exception("Subscribe task error for %s: %s", meeting_id, exc)
-    finally:
-        await ps.unsubscribe()
-        await ps.aclose()
-
-
-# ---------------------------------------------------------------------------
-# Direct asyncio.Queue tasks (fallback when Redis is unavailable)
-# ---------------------------------------------------------------------------
-
-async def _publish_to_queue(
-    transcript_iter, meeting_id: str, queue: asyncio.Queue, stop_event: asyncio.Event
-) -> None:
-    try:
-        async for segment in transcript_iter:
-            if stop_event.is_set():
-                return
-            if segment.is_final:
-                await meeting_store.add_segment(segment)
-            await queue.put(json.dumps({"type": "transcript", "data": segment.model_dump()}))
-        if not stop_event.is_set():
-            await queue.put(json.dumps({"type": "status", "data": {"status": "stream_complete", "meeting_id": meeting_id}}))
-    except asyncio.CancelledError:
-        pass
-    except Exception as exc:
-        logger.exception("Queue publish task error for %s: %s", meeting_id, exc)
-        await queue.put(json.dumps({"type": "error", "data": {"message": str(exc)}}))
-    finally:
-        await queue.put(None)  # sentinel: signal consumer to stop
-
-
-async def _subscribe_from_queue(
-    websocket: WebSocket, queue: asyncio.Queue, stop_event: asyncio.Event
-) -> None:
-    try:
-        while not stop_event.is_set():
-            try:
-                msg = await asyncio.wait_for(queue.get(), timeout=1.0)
-            except asyncio.TimeoutError:
-                continue
-            if msg is None:
-                break
-            try:
-                await websocket.send_text(msg)
-            except (WebSocketDisconnect, RuntimeError):
-                break
-    except asyncio.CancelledError:
-        pass
-
-
-# ---------------------------------------------------------------------------
-# Check Redis availability (fast, single ping)
-# ---------------------------------------------------------------------------
 
 async def _redis_available() -> bool:
-    try:
-        from app.services.redis_service import get_redis
-        r = await get_redis()
-        await asyncio.wait_for(r.ping(), timeout=2.0)
+    return await redis_available()
+
+
+def _origin_allowed(origin: str | None) -> bool:
+    # Browsers always send Origin on WebSocket handshakes; the check exists to
+    # stop other sites from opening streams with a visitor's browser. Clients
+    # without an Origin header are not browsers and could forge one anyway.
+    if origin is None:
         return True
-    except Exception:
-        return False
+    allowed = settings.allowed_origins
+    return "*" in allowed or origin.rstrip("/") in allowed
 
 
-# ---------------------------------------------------------------------------
-# WebSocket endpoint
-# ---------------------------------------------------------------------------
+async def _reject(websocket: WebSocket, code: ErrorCode) -> None:
+    error = ErrorMessage.for_code(code)
+    with contextlib.suppress(WebSocketDisconnect, RuntimeError):
+        await websocket.send_text(error.model_dump_json())
+        await websocket.close(code=error.close_code)
+
 
 @router.websocket("/meetings/{meeting_id}/stream")
-async def meeting_stream(websocket: WebSocket, meeting_id: str):
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if not meeting:
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        logger.warning("WebSocket rejected — meeting '%s' not found", meeting_id)
+async def meeting_stream(websocket: WebSocket, meeting_id: str) -> None:
+    await websocket.accept()
+
+    origin = websocket.headers.get("origin")
+    if not _origin_allowed(origin):
+        logger.warning("Rejected stream for meeting %s from origin %r", meeting_id, origin)
+        await _reject(websocket, ErrorCode.ORIGIN_NOT_ALLOWED)
         return
 
-    await websocket.accept()
-    logger.info("WebSocket connected for meeting %s", meeting_id)
-
-    use_deepgram = bool(settings.deepgram_api_key)
-
-    await websocket.send_text(json.dumps({
-        "type": "status",
-        "data": {
-            "status": "connected",
-            "meeting_id": meeting_id,
-            "title": meeting.title,
-            "mode": "deepgram" if use_deepgram else "mock",
-        },
-    }))
-
-    if use_deepgram:
-        from app.services.deepgram_service import DeepgramStreamer
-        streamer = DeepgramStreamer(meeting_id)
-        await streamer.connect()
-        transcript_iter = streamer.transcript_stream()
-    else:
-        from app.services.mock_transcription import mock_transcript_stream
-        transcript_iter = mock_transcript_stream(meeting_id)
-        streamer = None
-
-    stop_event = asyncio.Event()
-
-    # Use Redis if available, otherwise fall back to asyncio.Queue
-    redis_ok = await _redis_available()
-    if not redis_ok:
-        logger.info("Redis unavailable — using direct queue transport for %s", meeting_id)
-
-    if redis_ok:
-        publish_task = asyncio.create_task(
-            _publish_task(transcript_iter, meeting_id, stop_event),
-            name=f"publish-{meeting_id}",
+    client_ip = websocket.client.host if websocket.client else "unknown"
+    if _open_connections[client_ip] >= settings.ws_max_connections_per_ip:
+        logger.warning(
+            "Rejected stream for meeting %s: too many sockets from %s", meeting_id, client_ip
         )
-        subscribe_task = asyncio.create_task(
-            _subscribe_task(websocket, meeting_id, stop_event),
-            name=f"subscribe-{meeting_id}",
-        )
-    else:
-        queue: asyncio.Queue = asyncio.Queue()
-        publish_task = asyncio.create_task(
-            _publish_to_queue(transcript_iter, meeting_id, queue, stop_event),
-            name=f"publish-{meeting_id}",
-        )
-        subscribe_task = asyncio.create_task(
-            _subscribe_from_queue(websocket, queue, stop_event),
-            name=f"subscribe-{meeting_id}",
-        )
+        await _reject(websocket, ErrorCode.TOO_MANY_CONNECTIONS)
+        return
 
+    _open_connections[client_ip] += 1
     try:
-        while True:
-            data = await websocket.receive()
-
-            if "bytes" in data:
-                if use_deepgram and streamer:
-                    await streamer.send_audio(data["bytes"])
-
-            elif "text" in data:
-                try:
-                    msg = json.loads(data["text"])
-                except json.JSONDecodeError:
-                    await websocket.send_text(json.dumps({"type": "error", "data": {"message": "Invalid JSON."}}))
-                    continue
-
-                msg_type = msg.get("type", "")
-
-                if msg_type == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-
-                elif msg_type == "stop":
-                    stop_event.set()
-                    await websocket.send_text(json.dumps({
-                        "type": "status",
-                        "data": {"status": "stopped", "meeting_id": meeting_id},
-                    }))
-                    break
-
-                else:
-                    await websocket.send_text(json.dumps({"type": "error", "data": {"message": f"Unknown type: '{msg_type}'"}}))
-
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected for meeting %s", meeting_id)
-    except Exception as exc:
-        logger.exception("Unhandled WebSocket error for meeting %s: %s", meeting_id, exc)
+        await _serve(websocket, meeting_id, client_ip)
     finally:
-        stop_event.set()
-        for task in (publish_task, subscribe_task):
-            if not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-        if streamer:
-            await streamer.close()
-        logger.info("WebSocket handler cleaned up for meeting %s", meeting_id)
+        _open_connections[client_ip] -= 1
+        if _open_connections[client_ip] <= 0:
+            del _open_connections[client_ip]
+
+
+async def _serve(websocket: WebSocket, meeting_id: str, client_ip: str) -> None:
+    try:
+        meeting = await smart_meeting_store.get_meeting(meeting_id)
+    except Exception:
+        logger.exception("Could not load meeting %s for streaming", meeting_id)
+        await _reject(websocket, ErrorCode.INTERNAL_ERROR)
+        return
+    if meeting is None:
+        await _reject(websocket, ErrorCode.MEETING_NOT_FOUND)
+        return
+    if meeting.status == "ended":
+        await _reject(websocket, ErrorCode.MEETING_ENDED)
+        return
+    await StreamConnection(websocket, meeting, client_ip).run()
+
+
+@dataclass(frozen=True, slots=True)
+class _Ending:
+    """Why the receive loop stopped."""
+
+    reason: Literal["disconnected", "stop", "error"]
+    error: ErrorCode | None = None
+
+
+_DISCONNECTED = _Ending("disconnected")
+_STOP = _Ending("stop")
+
+
+class StreamConnection:
+    """One client socket: reads audio and control frames, writes session messages.
+
+    Everything sent to the client goes through the subscriber queue and a single
+    sender task, so messages keep their order and never race on the socket.
+    """
+
+    def __init__(self, websocket: WebSocket, meeting: Meeting, client_ip: str) -> None:
+        self._ws = websocket
+        self._meeting = meeting
+        self._mode = settings.transcription_mode
+        self._subscriber = Subscriber(label=client_ip)
+        self._audio_frames = 0
+
+    async def run(self) -> None:
+        self._subscriber.send(ConnectedMessage(mode=self._mode))
+        sender = asyncio.create_task(self._send_loop(), name=f"ws-send-{self._meeting.id}")
+        redis = get_redis() if await _redis_available() else None
+        session = await transcription_hub.join(self._meeting, self._subscriber, redis=redis)
+        try:
+            try:
+                if self._mode == "mock":
+                    await session.start_source(self._subscriber, "mock")
+                ending = await self._receive_loop(session)
+            except Exception:
+                logger.exception("Stream for meeting %s failed", self._meeting.id)
+                ending = _Ending("error", ErrorCode.INTERNAL_ERROR)
+            await self._release_source(session, ending)
+            if ending.reason == "stop":
+                self._finish(StatusMessage(status="stopped"), close_code=1000)
+            elif ending.error is not None:
+                error = ErrorMessage.for_code(ending.error)
+                self._finish(error, close_code=error.close_code)
+            if ending.reason != "disconnected":
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(asyncio.shield(sender), SEND_DRAIN_TIMEOUT_SECONDS)
+        finally:
+            sender.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await sender
+            await transcription_hub.leave(session, self._subscriber)
+
+    def _finish(self, message: StatusMessage | ErrorMessage, *, close_code: int) -> None:
+        self._subscriber.send(message)
+        self._subscriber.close(close_code)
+
+    async def _release_source(self, session: MeetingSession, ending: _Ending) -> None:
+        """Flush this connection's source before the socket goes away."""
+        if not session.owns_source(self._subscriber):
+            return
+        if ending.reason != "stop" and session.hand_over_source(self._subscriber):
+            return
+        await session.stop_source(self._subscriber)
+
+    async def _receive_loop(self, session: MeetingSession) -> _Ending:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + settings.session_max_seconds
+        while True:
+            try:
+                message = await asyncio.wait_for(self._ws.receive(), deadline - loop.time())
+            except TimeoutError:
+                logger.info(
+                    "Stream for meeting %s reached the session time limit", self._meeting.id
+                )
+                return _Ending("error", ErrorCode.SESSION_TIME_LIMIT)
+            # receive() reports a closed socket as a message; it does not raise.
+            if message["type"] == "websocket.disconnect":
+                return _DISCONNECTED
+            if (ending := await self._handle_frame(session, message)) is not None:
+                return ending
+
+    async def _handle_frame(self, session: MeetingSession, message: Message) -> _Ending | None:
+        if (chunk := message.get("bytes")) is not None:
+            return await self._handle_audio(session, chunk)
+        if (text := message.get("text")) is not None:
+            return self._handle_text(text)
+        return None
+
+    async def _handle_audio(self, session: MeetingSession, chunk: bytes) -> _Ending | None:
+        self._audio_frames += 1
+        if self._mode != "deepgram" or not chunk:
+            return None
+        if session.owns_source(self._subscriber):
+            await session.send_audio(self._subscriber, chunk)
+            return None
+        # Only a connection's first frame carries the container header, so a
+        # Deepgram stream can be opened from nowhere else.
+        if self._audio_frames > 1 or session.has_source:
+            if self._audio_frames == 1:
+                logger.info(
+                    "Ignoring audio from a second client on meeting %s; another client is live",
+                    self._meeting.id,
+                )
+            return None
+        try:
+            await session.start_source(self._subscriber, "deepgram")
+        except TranscriptionUnavailableError as error:
+            logger.warning("Transcription unavailable for meeting %s: %s", self._meeting.id, error)
+            return _Ending("error", ErrorCode.TRANSCRIPTION_UNAVAILABLE)
+        await session.send_audio(self._subscriber, chunk)
+        return None
+
+    def _handle_text(self, text: str) -> _Ending | None:
+        try:
+            request = client_message_adapter.validate_json(text)
+        except ValidationError:
+            logger.debug("Ignoring unrecognized client message on meeting %s", self._meeting.id)
+            return None
+        if isinstance(request, PingRequest):
+            self._subscriber.send(PongMessage())
+            return None
+        return _STOP
+
+    async def _send_loop(self) -> None:
+        while True:
+            item = await self._subscriber.next()
+            try:
+                if isinstance(item, CloseRequest):
+                    await self._ws.close(code=item.code)
+                    return
+                await self._ws.send_text(item)
+            except (WebSocketDisconnect, RuntimeError):
+                return  # the client is gone; the receive loop sees the disconnect

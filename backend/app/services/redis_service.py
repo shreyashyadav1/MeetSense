@@ -1,41 +1,46 @@
-import logging
-from typing import Optional
+"""Shared Redis client (optional: a blank REDIS_URL disables Redis)."""
+
+from __future__ import annotations
+
+import asyncio
 
 from redis.asyncio import Redis
-from redis.asyncio.client import PubSub
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+PING_TIMEOUT_SECONDS = 1.0
 
-_redis: Optional[Redis] = None
+_client: Redis | None = None
 
 
 def get_redis() -> Redis:
-    global _redis
-    if _redis is None:
-        _redis = Redis.from_url(settings.redis_url, decode_responses=True)
-    return _redis
+    global _client
+    if _client is None:
+        _client = Redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            health_check_interval=30,
+        )
+    return _client
 
 
-async def publish_segment(meeting_id: str, segment_json: str) -> None:
-    """Publish a transcript segment JSON string to the meeting channel."""
-    r = get_redis()
-    channel = f"meeting:{meeting_id}:segments"
-    await r.publish(channel, segment_json)
-    logger.debug("[Redis] published to %s", channel)
+async def redis_available() -> bool:
+    """Whether Redis is configured and answers a PING promptly."""
+    if not settings.redis_url:
+        return False
+    try:
+        return bool(await asyncio.wait_for(get_redis().ping(), PING_TIMEOUT_SECONDS))
+    except Exception:
+        return False
 
 
-async def subscribe_segments(meeting_id: str) -> PubSub:
-    """Return a PubSub subscribed to the meeting's segment channel."""
-    r = get_redis()
-    ps = r.pubsub()
-    await ps.subscribe(f"meeting:{meeting_id}:segments")
-    return ps
+def segment_channel(meeting_id: str) -> str:
+    return f"meeting:{meeting_id}:segments"
 
 
 async def close_redis() -> None:
-    global _redis
-    if _redis:
-        await _redis.aclose()
-        _redis = None
+    global _client
+    client, _client = _client, None
+    if client is not None:
+        await client.aclose()

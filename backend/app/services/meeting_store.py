@@ -1,106 +1,107 @@
-import asyncio
-from typing import Dict, List, Optional
-from datetime import datetime, timezone
+"""Meeting storage interface and its in-memory implementation."""
+
+from __future__ import annotations
+
 import uuid
+from datetime import UTC, datetime
+from typing import Protocol
 
 from app.models.schemas import Meeting, MeetingInsights, TranscriptSegment
 
 
+class MeetingStoreBackend(Protocol):
+    """Operations every meeting store implements."""
+
+    async def prepare(self) -> None:
+        """Make the backend ready for use (e.g. apply schema migrations)."""
+
+    async def ping(self) -> None:
+        """Raise if the backend is not reachable."""
+
+    async def create_meeting(self, title: str) -> Meeting: ...
+
+    async def get_meeting(self, meeting_id: str) -> Meeting | None: ...
+
+    async def list_meetings(self, *, limit: int, offset: int) -> list[Meeting]:
+        """Meetings ordered newest first."""
+        ...
+
+    async def end_meeting(self, meeting_id: str) -> Meeting | None: ...
+
+    async def add_segment(self, segment: TranscriptSegment) -> TranscriptSegment: ...
+
+    async def get_segments(self, meeting_id: str) -> list[TranscriptSegment]:
+        """Segments ordered by sequence."""
+        ...
+
+    async def get_last_sequence(self, meeting_id: str) -> int:
+        """Highest stored segment sequence for the meeting, or 0."""
+        ...
+
+    async def save_insights(self, insights: MeetingInsights) -> MeetingInsights:
+        """Insert or replace the meeting's insights."""
+        ...
+
+    async def get_insights(self, meeting_id: str) -> MeetingInsights | None: ...
+
+
 class MeetingStore:
-    """
-    Thread-safe in-memory store for meetings and transcript segments.
-    Uses asyncio.Lock to guard all mutations.
+    """Process-local store, used when no database is configured or reachable.
+
+    Everything runs on the event loop and no method awaits while mutating, so
+    no locking is needed. Data is lost when the process exits.
     """
 
     def __init__(self) -> None:
-        self._meetings: Dict[str, Meeting] = {}
-        self._transcripts: Dict[str, List[TranscriptSegment]] = {}
-        self._insights: Dict[str, MeetingInsights] = {}
-        self._lock = asyncio.Lock()
+        self._meetings: dict[str, Meeting] = {}
+        self._segments: dict[str, list[TranscriptSegment]] = {}
+        self._insights: dict[str, MeetingInsights] = {}
 
-    # ------------------------------------------------------------------
-    # Meeting operations
-    # ------------------------------------------------------------------
+    async def prepare(self) -> None:
+        return None
+
+    async def ping(self) -> None:
+        return None
 
     async def create_meeting(self, title: str) -> Meeting:
-        """Create a new active meeting and return it."""
         meeting = Meeting(
             id=str(uuid.uuid4()),
             title=title,
             status="active",
-            started_at=datetime.now(timezone.utc),
-            ended_at=None,
+            started_at=datetime.now(UTC),
         )
-        async with self._lock:
-            self._meetings[meeting.id] = meeting
-            self._transcripts[meeting.id] = []
+        self._meetings[meeting.id] = meeting
         return meeting
 
-    async def get_meeting(self, meeting_id: str) -> Optional[Meeting]:
-        """Return a meeting by id, or None if not found."""
-        async with self._lock:
-            return self._meetings.get(meeting_id)
+    async def get_meeting(self, meeting_id: str) -> Meeting | None:
+        return self._meetings.get(meeting_id)
 
-    async def list_meetings(self) -> List[Meeting]:
-        """Return all meetings sorted by start time (newest first)."""
-        async with self._lock:
-            return sorted(
-                self._meetings.values(),
-                key=lambda m: m.started_at,
-                reverse=True,
-            )
+    async def list_meetings(self, *, limit: int, offset: int) -> list[Meeting]:
+        newest_first = sorted(self._meetings.values(), key=lambda m: m.started_at, reverse=True)
+        return newest_first[offset : offset + limit]
 
-    async def end_meeting(self, meeting_id: str) -> Optional[Meeting]:
-        """
-        Mark a meeting as ended.
-        Returns the updated Meeting, or None if the meeting does not exist.
-        """
-        async with self._lock:
-            meeting = self._meetings.get(meeting_id)
-            if meeting is None:
-                return None
-            # Pydantic v2 models are immutable by default — rebuild with updates
-            updated = meeting.model_copy(
-                update={
-                    "status": "ended",
-                    "ended_at": datetime.now(timezone.utc),
-                }
-            )
-            self._meetings[meeting_id] = updated
-            return updated
-
-    # ------------------------------------------------------------------
-    # Transcript operations
-    # ------------------------------------------------------------------
+    async def end_meeting(self, meeting_id: str) -> Meeting | None:
+        meeting = self._meetings.get(meeting_id)
+        if meeting is None:
+            return None
+        if meeting.status != "ended":
+            meeting = meeting.model_copy(update={"status": "ended", "ended_at": datetime.now(UTC)})
+            self._meetings[meeting_id] = meeting
+        return meeting
 
     async def add_segment(self, segment: TranscriptSegment) -> TranscriptSegment:
-        """Append a transcript segment to the meeting's transcript list."""
-        async with self._lock:
-            if segment.meeting_id not in self._transcripts:
-                self._transcripts[segment.meeting_id] = []
-            self._transcripts[segment.meeting_id].append(segment)
+        self._segments.setdefault(segment.meeting_id, []).append(segment)
         return segment
 
-    async def get_segments(self, meeting_id: str) -> List[TranscriptSegment]:
-        """Return all transcript segments for a meeting, in order."""
-        async with self._lock:
-            return list(self._transcripts.get(meeting_id, []))
+    async def get_segments(self, meeting_id: str) -> list[TranscriptSegment]:
+        return sorted(self._segments.get(meeting_id, []), key=lambda s: s.sequence)
 
-    # ------------------------------------------------------------------
-    # Insights operations
-    # ------------------------------------------------------------------
+    async def get_last_sequence(self, meeting_id: str) -> int:
+        return max((s.sequence for s in self._segments.get(meeting_id, [])), default=0)
 
     async def save_insights(self, insights: MeetingInsights) -> MeetingInsights:
-        """Persist AI-generated insights for a meeting."""
-        async with self._lock:
-            self._insights[insights.meeting_id] = insights
+        self._insights[insights.meeting_id] = insights
         return insights
 
-    async def get_insights(self, meeting_id: str) -> Optional[MeetingInsights]:
-        """Return stored insights for a meeting, or None if not yet generated."""
-        async with self._lock:
-            return self._insights.get(meeting_id)
-
-
-# Module-level singleton — imported by routers and the WebSocket handler.
-meeting_store = MeetingStore()
+    async def get_insights(self, meeting_id: str) -> MeetingInsights | None:
+        return self._insights.get(meeting_id)

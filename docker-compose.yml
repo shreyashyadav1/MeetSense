@@ -1,10 +1,20 @@
-version: "3.9"
-
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: meetsense
+      POSTGRES_PASSWORD: meetsense
+      POSTGRES_DB: meetsense
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meetsense -d meetsense"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -13,19 +23,37 @@ services:
 
   backend:
     build: ./backend
+    # Optional: API keys for Deepgram and Groq. Without them the stack runs in
+    # demo mode (scripted transcript, no AI insights).
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://meetsense:meetsense@postgres:5432/meetsense
+      REDIS_URL: redis://redis:6379
+      # The database is part of this stack, so fail loudly instead of
+      # silently keeping meetings in memory.
+      ALLOW_MEMORY_FALLBACK: "false"
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend/.env
-    environment:
-      - REDIS_URL=redis://redis:6379
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Empty: the app calls /api and /ws on its own origin, and nginx
+        # proxies them to the backend.
+        VITE_API_URL: ""
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

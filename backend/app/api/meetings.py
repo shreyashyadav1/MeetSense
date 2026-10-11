@@ -1,24 +1,44 @@
+from __future__ import annotations
+
+import asyncio
 import logging
-from typing import List
+from typing import Annotated
+from weakref import WeakValueDictionary
 
-from fastapi import APIRouter, HTTPException, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from app.models.schemas import Meeting, CreateMeetingRequest, MeetingInsights, TranscriptSegment
+from app.core.rate_limit import limiter
+from app.models.schemas import CreateMeetingRequest, Meeting, MeetingInsights, TranscriptSegment
+from app.services.ai_service import (
+    AINotConfiguredError,
+    AIResponseError,
+    AIUpstreamError,
+    generate_insights,
+)
 from app.services.smart_meeting_store import smart_meeting_store as meeting_store
-from app.services.ai_service import generate_insights
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-limiter = Limiter(key_func=get_remote_address)
+# One summarization at a time per meeting, so concurrent requests share one
+# model call. Entries disappear once no request holds the lock.
+_insight_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 
 
-# ---------------------------------------------------------------------------
-# POST /api/meetings — create a new meeting
-# ---------------------------------------------------------------------------
+def _insights_lock(meeting_id: str) -> asyncio.Lock:
+    lock = _insight_locks.get(meeting_id)
+    if lock is None:
+        lock = _insight_locks[meeting_id] = asyncio.Lock()
+    return lock
+
+
+async def _get_meeting_or_404(meeting_id: str) -> Meeting:
+    meeting = await meeting_store.get_meeting(meeting_id)
+    if meeting is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Meeting '{meeting_id}' not found.")
+    return meeting
+
 
 @router.post(
     "/meetings",
@@ -28,193 +48,112 @@ limiter = Limiter(key_func=get_remote_address)
 )
 @limiter.limit("20/minute")
 async def create_meeting(request: Request, body: CreateMeetingRequest) -> Meeting:
-    """
-    Create a new meeting in *active* status.
-    Returns the full Meeting object including the generated id and started_at.
-    """
-    meeting = await meeting_store.create_meeting(title=body.title)
-    return meeting
+    """Create a meeting in *active* status. The title is trimmed (1-120 characters)."""
+    return await meeting_store.create_meeting(title=body.title)
 
 
-# ---------------------------------------------------------------------------
-# GET /api/meetings — list all meetings
-# ---------------------------------------------------------------------------
-
-@router.get(
-    "/meetings",
-    response_model=List[Meeting],
-    summary="List all meetings",
-)
-async def list_meetings() -> List[Meeting]:
-    """Return all meetings sorted by start time (newest first)."""
-    return await meeting_store.list_meetings()
+@router.get("/meetings", response_model=list[Meeting], summary="List meetings, newest first")
+async def list_meetings(
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[Meeting]:
+    return await meeting_store.list_meetings(limit=limit, offset=offset)
 
 
-# ---------------------------------------------------------------------------
-# GET /api/meetings/{meeting_id} — get a single meeting
-# ---------------------------------------------------------------------------
-
-@router.get(
-    "/meetings/{meeting_id}",
-    response_model=Meeting,
-    summary="Get a meeting by id",
-)
+@router.get("/meetings/{meeting_id}", response_model=Meeting, summary="Get a meeting by id")
 async def get_meeting(meeting_id: str) -> Meeting:
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Meeting '{meeting_id}' not found.",
-        )
-    return meeting
+    return await _get_meeting_or_404(meeting_id)
 
-
-# ---------------------------------------------------------------------------
-# POST /api/meetings/{meeting_id}/end — end a meeting
-# ---------------------------------------------------------------------------
 
 @router.post(
     "/meetings/{meeting_id}/end",
     response_model=Meeting,
     summary="End an active meeting",
+    responses={404: {"description": "Unknown meeting"}, 409: {"description": "Already ended"}},
 )
 async def end_meeting(meeting_id: str) -> Meeting:
-    """
-    Transition a meeting from *active* to *ended* and record the ended_at
-    timestamp.  Returns 404 if the meeting does not exist.
-    """
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Meeting '{meeting_id}' not found.",
-        )
+    meeting = await _get_meeting_or_404(meeting_id)
     if meeting.status == "ended":
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Meeting '{meeting_id}' has already ended.",
+            status.HTTP_409_CONFLICT, detail=f"Meeting '{meeting_id}' has already ended."
         )
-    updated = await meeting_store.end_meeting(meeting_id)
-    return updated  # type: ignore[return-value]  # end_meeting returns Optional but we checked above
+    ended = await meeting_store.end_meeting(meeting_id)
+    if ended is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=f"Meeting '{meeting_id}' not found.")
+    return ended
 
-
-# ---------------------------------------------------------------------------
-# GET /api/meetings/{meeting_id}/transcript — fetch transcript segments
-# ---------------------------------------------------------------------------
 
 @router.get(
     "/meetings/{meeting_id}/transcript",
-    response_model=List[TranscriptSegment],
-    summary="Get transcript segments for a meeting",
+    response_model=list[TranscriptSegment],
+    summary="Get the stored transcript, in order",
 )
-async def get_transcript(meeting_id: str) -> List[TranscriptSegment]:
-    """
-    Return all transcript segments collected so far for the given meeting.
-    Returns 404 if the meeting does not exist.
-    """
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Meeting '{meeting_id}' not found.",
-        )
+async def get_transcript(meeting_id: str) -> list[TranscriptSegment]:
+    await _get_meeting_or_404(meeting_id)
     return await meeting_store.get_segments(meeting_id)
 
-
-# ---------------------------------------------------------------------------
-# POST /api/meetings/{meeting_id}/summarize — generate AI insights
-# ---------------------------------------------------------------------------
 
 @router.post(
     "/meetings/{meeting_id}/summarize",
     response_model=MeetingInsights,
-    summary="Generate AI insights for a meeting (idempotent)",
+    summary="Generate AI insights for a meeting",
+    responses={
+        400: {"description": "The meeting has no transcript yet"},
+        404: {"description": "Unknown meeting"},
+        429: {"description": "Rate limited"},
+        502: {"description": "The AI provider failed or returned unusable output"},
+        503: {"description": "AI insights are not configured"},
+    },
 )
 @limiter.limit("5/minute")
-async def summarize_meeting(request: Request, meeting_id: str) -> MeetingInsights:
+async def summarize_meeting(
+    request: Request,
+    meeting_id: str,
+    force: Annotated[bool, Query(description="Regenerate even if insights exist")] = False,
+) -> MeetingInsights:
+    """Summary, action items, decisions, open questions and a follow-up email.
+
+    Returns the stored insights unless ``force=true``.
     """
-    Generate AI-powered insights (summary, action items, decisions, questions,
-    follow-up email) from the meeting transcript using Groq.
+    meeting = await _get_meeting_or_404(meeting_id)
+    async with _insights_lock(meeting_id):
+        if not force and (cached := await meeting_store.get_insights(meeting_id)) is not None:
+            return cached
 
-    - Returns 200 with cached insights if they have already been generated.
-    - Returns 400 if no transcript segments exist yet.
-    - Returns 503 if GROQ_API_KEY is not configured.
-    - Returns 502 if the Groq API call fails.
-    """
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Meeting '{meeting_id}' not found.",
-        )
-
-    # Idempotent: return cached insights if already generated
-    existing = await meeting_store.get_insights(meeting_id)
-    if existing is not None:
-        return existing
-
-    segments = await meeting_store.get_segments(meeting_id)
-    final_segments = [s for s in segments if s.is_final]
-
-    if not final_segments:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No transcript available to summarize.",
-        )
-
-    try:
-        insights = await generate_insights(
-            meeting_id=meeting_id,
-            meeting_title=meeting.title,
-            segments=final_segments,
-        )
-    except ValueError as exc:
-        msg = str(exc)
-        if "GROQ_API_KEY" in msg:
+        segments = [s for s in await meeting_store.get_segments(meeting_id) if s.is_final]
+        if not segments:
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="AI service not configured. Set GROQ_API_KEY in .env",
+                status.HTTP_400_BAD_REQUEST, detail="No transcript available to summarize."
             )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=msg,
-        )
-    except Exception as exc:
-        logger.error("[AI] Groq API error for meeting %s: %s", meeting_id, exc)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"AI service error: {exc}",
-        )
+        try:
+            insights = await generate_insights(
+                meeting_id=meeting_id, meeting_title=meeting.title, segments=segments
+            )
+        except AINotConfiguredError:
+            raise HTTPException(
+                status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI insights are not configured on this server.",
+            ) from None
+        except (AIUpstreamError, AIResponseError) as error:
+            logger.warning("Insight generation failed for meeting %s: %s", meeting_id, error)
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                detail="The AI service could not generate insights. Please try again.",
+            ) from None
+        return await meeting_store.save_insights(insights)
 
-    saved = await meeting_store.save_insights(insights)
-    return saved
-
-
-# ---------------------------------------------------------------------------
-# GET /api/meetings/{meeting_id}/insights — retrieve saved AI insights
-# ---------------------------------------------------------------------------
 
 @router.get(
     "/meetings/{meeting_id}/insights",
     response_model=MeetingInsights,
-    summary="Get saved AI insights for a meeting",
+    summary="Get stored AI insights",
 )
 async def get_insights(meeting_id: str) -> MeetingInsights:
-    """
-    Return previously generated insights for the given meeting.
-    Returns 404 if the meeting does not exist or insights have not been generated yet.
-    """
-    meeting = await meeting_store.get_meeting(meeting_id)
-    if meeting is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Meeting '{meeting_id}' not found.",
-        )
-
+    await _get_meeting_or_404(meeting_id)
     insights = await meeting_store.get_insights(meeting_id)
     if insights is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status.HTTP_404_NOT_FOUND,
             detail=f"No insights found for meeting '{meeting_id}'. Call POST /summarize first.",
         )
     return insights
