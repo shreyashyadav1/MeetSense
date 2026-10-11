@@ -133,7 +133,7 @@
 
 /* When a line becomes final its ink "dries" from graphite into the speaker's color. */
 .transcript--live .turn__line[data-line='final'] {
-  transition: color 240ms var(--ease-out);
+  transition: color 200ms var(--ease-out);
 }
 
 @starting-style {
@@ -164,7 +164,7 @@
   min-height: 2.5rem;
   padding: 0 var(--space-4);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   color: var(--paper);
   font-family: var(--font-room);
@@ -173,8 +173,8 @@
   font-weight: 600;
   box-shadow: 0 6px 20px -8px color-mix(in oklab, var(--ink) 60%, transparent);
   transition:
-    opacity 180ms var(--ease-out),
-    transform 180ms var(--ease-out),
+    opacity var(--duration-state) var(--ease-out),
+    transform var(--duration-state) var(--ease-out),
     background-color var(--duration-state) ease;
 }
 
@@ -187,6 +187,7 @@
 
 .transcript__jump:active {
   transform: scale(0.97);
+  transition-duration: var(--duration-press);
 }
 
 @media (hover: hover) and (pointer: fine) {

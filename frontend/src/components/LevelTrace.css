@@ -11,7 +11,7 @@
   flex: 1 1 0;
   max-width: 4px;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
   background: var(--ink);
   transform-origin: center;
   transition: transform 100ms linear;
@@ -19,7 +19,7 @@
 
 .level-trace--bar {
   height: 0.375rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--shelf-strong);
   overflow: hidden;
 }

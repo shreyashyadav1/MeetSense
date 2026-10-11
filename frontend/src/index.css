@@ -69,6 +69,7 @@
   --radius-xs: 4px;
   --radius-s: 6px;
   --radius-m: 10px;
+  --radius-pill: 999px;
 
   --appbar-height: 3.5rem;
   --page-gutter: var(--space-6);
@@ -214,16 +215,6 @@ svg {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
-}
-
-/* Room type: the app's own labels and numbers */
-.room-type {
-  font-family: var(--font-room);
-  font-stretch: 87.5%;
-}
-
-.numeric {
-  font-variant-numeric: tabular-nums;
 }
 
 /* ===== Buttons ===== */
