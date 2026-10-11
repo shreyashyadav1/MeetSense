@@ -1,4 +1,4 @@
-import { differenceInSeconds, format as formatPattern, isValid, parseISO } from 'date-fns';
+import { differenceInSeconds, isValid, parseISO } from 'date-fns';
 
 /** Locale and time zone overrides; both default to the user's own. Tests pin them. */
 export interface DateFormatOptions {
@@ -24,12 +24,6 @@ export function formatTime(iso: string, options: DateFormatOptions = {}): string
 /** Full date and time, e.g. "Sunday, October 11, 2026 at 3:14 PM". */
 export function formatLongDateTime(iso: string, options: DateFormatOptions = {}): string {
   return format(iso, { dateStyle: 'full', timeStyle: 'short' }, options);
-}
-
-/** Formats an ISO timestamp with a date-fns pattern; returns the input unchanged if it can't be parsed. */
-export function formatDateTime(iso: string, pattern: string): string {
-  const date = parseDate(iso);
-  return date ? formatPattern(date, pattern) : iso;
 }
 
 /** Calendar day in the given time zone as YYYY-MM-DD, used to group meetings by day. */

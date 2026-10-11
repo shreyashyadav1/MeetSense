@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ConnectionStatus, MeetingStatus } from '../types';
+import type { ConnectionStatus } from '../types';
 
 interface StatusBadgeProps {
   status: ConnectionStatus;
@@ -28,18 +28,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, complete = fal
     <span className="connection-status" data-tone={tone}>
       <span className="connection-status__mark" aria-hidden="true" />
       <span>{label}</span>
-    </span>
-  );
-};
-
-interface MeetingStatusBadgeProps {
-  status: MeetingStatus;
-}
-
-export const MeetingStatusBadge: React.FC<MeetingStatusBadgeProps> = ({ status }) => {
-  return (
-    <span className={`meeting-badge meeting-badge--${status}`}>
-      {status === 'active' ? 'Active' : 'Ended'}
     </span>
   );
 };

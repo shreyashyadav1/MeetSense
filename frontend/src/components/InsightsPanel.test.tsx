@@ -38,7 +38,7 @@ describe('InsightsPanel', () => {
   it('generates insights on request without forcing regeneration', async () => {
     const user = renderPanel();
 
-    await user.click(await screen.findByRole('button', { name: 'Generate AI Insights' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate insights' }));
 
     expect(summarizeMeeting).toHaveBeenCalledWith('m1', { force: false });
     expect(await screen.findByText('Fresh summary.')).toBeInTheDocument();
@@ -59,7 +59,7 @@ describe('InsightsPanel', () => {
   it('uses the meeting status, not just the transcript, to allow generation', async () => {
     renderPanel('active', true);
 
-    const button = await screen.findByRole('button', { name: 'Generate AI Insights' });
+    const button = await screen.findByRole('button', { name: 'Generate insights' });
     expect(button).toBeDisabled();
     expect(screen.getByText('End the meeting first to generate insights.')).toBeInTheDocument();
   });
@@ -67,7 +67,7 @@ describe('InsightsPanel', () => {
   it('explains when there is nothing to summarize', async () => {
     renderPanel('ended', false);
 
-    expect(await screen.findByRole('button', { name: 'Generate AI Insights' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Generate insights' })).toBeDisabled();
     expect(screen.getByText('This meeting has no transcript to summarize.')).toBeInTheDocument();
   });
 
@@ -80,10 +80,10 @@ describe('InsightsPanel', () => {
     vi.mocked(summarizeMeeting).mockRejectedValueOnce(apiError(status, detail));
     const user = renderPanel();
 
-    await user.click(await screen.findByRole('button', { name: 'Generate AI Insights' }));
+    await user.click(await screen.findByRole('button', { name: 'Generate insights' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
-    expect(screen.getByRole('button', { name: 'Generate AI Insights' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Generate insights' })).toBeEnabled();
   });
 
   it('keeps the current insights visible when regeneration fails', async () => {
@@ -101,7 +101,7 @@ describe('InsightsPanel', () => {
     vi.mocked(getInsights).mockRejectedValue(apiError(500));
     renderPanel();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load saved insights.');
-    expect(screen.getByRole('button', { name: 'Generate AI Insights' })).toBeEnabled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load the saved insights.');
+    expect(screen.getByRole('button', { name: 'Generate insights' })).toBeEnabled();
   });
 });

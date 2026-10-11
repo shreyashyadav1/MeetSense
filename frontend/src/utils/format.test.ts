@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   durationAttribute,
   formatClock,
-  formatDateTime,
   formatDayHeading,
   formatDuration,
   formatLongDateTime,
@@ -35,13 +34,6 @@ describe('formatClock', () => {
     expect(formatClock(3723)).toBe('1:02:03');
     expect(formatClock(65, { padMinutes: true })).toBe('01:05');
     expect(formatClock(Number.NaN)).toBe('0:00');
-  });
-});
-
-describe('formatDateTime', () => {
-  it('falls back to the raw value when it is not a date', () => {
-    expect(formatDateTime('2026-09-23T10:00:00', 'yyyy-MM-dd')).toBe('2026-09-23');
-    expect(formatDateTime('garbage', 'yyyy-MM-dd')).toBe('garbage');
   });
 });
 
