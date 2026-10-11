@@ -83,10 +83,11 @@ host provisioning 200 meetings at once). See `RESULTS.md` for that finding.
 ## Running the scenarios
 
 From `loadtest/` (so the `wsload` package and the default `results/` output
-directory resolve correctly):
+directory resolve correctly). The Setup block above leaves your shell in
+`backend/`, so go to `loadtest/` via the repo root:
 
 ```bash
-cd loadtest
+cd "$(git rev-parse --show-toplevel)/loadtest"
 
 # (a) N concurrent meetings, one streaming socket each, ramping 10 -> 50 -> 100 -> 200
 ../backend/.venv/bin/python -m wsload.run ramp \
@@ -149,6 +150,15 @@ rerunning the commands above; they aren't committed as they're throwaway.
 - One 8 GB MacBook Air running the backend, both containers, *and* the load
   generator at once. Numbers describe this machine's mock-mode ceiling, not
   the backend's ceiling on real hardware with real Deepgram audio.
+- Anything else on the machine competes for the same cores and RAM, including
+  other Docker containers (they all share one VM). Check that the machine is
+  quiet right before a timed run, and record what you saw next to the numbers:
+
+  ```bash
+  top -l 3 -s 2 -n 0 | grep "CPU usage"   # idle should sit well above ~60%
+  sysctl vm.swapusage                     # heavy swap use means paging can masquerade as latency
+  docker stats --no-stream                # who else is busy inside the Docker VM
+  ```
 - Client and server share a CPU. At the higher concurrency stages the load
   generator's own event loop is doing real work (JSON parsing, ~one wakeup
   per socket per 250ms); a slower client tick can widen p95s in a way that
