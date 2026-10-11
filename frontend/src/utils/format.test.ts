@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatClock, formatDateTime, formatDuration } from './format';
+import { durationAttribute, formatClock, formatDateTime, formatDuration } from './format';
 
 describe('formatDuration', () => {
   const start = '2026-09-23T10:00:00+00:00';
@@ -34,5 +34,14 @@ describe('formatDateTime', () => {
   it('falls back to the raw value when it is not a date', () => {
     expect(formatDateTime('2026-09-23T10:00:00', 'yyyy-MM-dd')).toBe('2026-09-23');
     expect(formatDateTime('garbage', 'yyyy-MM-dd')).toBe('garbage');
+  });
+});
+
+describe('durationAttribute', () => {
+  it('writes HTML duration strings', () => {
+    expect(durationAttribute(0)).toBe('PT0S');
+    expect(durationAttribute(65.4)).toBe('PT1M5S');
+    expect(durationAttribute(3723)).toBe('PT1H2M3S');
+    expect(durationAttribute(Number.NaN)).toBe('PT0S');
   });
 });

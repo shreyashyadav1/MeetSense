@@ -39,3 +39,12 @@ export function formatClock(totalSeconds: number, { padMinutes = false } = {}): 
   if (hours > 0) return `${hours}:${String(minutes).padStart(2, '0')}:${seconds}`;
   return `${padMinutes ? String(minutes).padStart(2, '0') : minutes}:${seconds}`;
 }
+
+/** The same offset as an HTML duration string, e.g. "PT1M5S", for a <time> element. */
+export function durationAttribute(totalSeconds: number): string {
+  const clamped = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
+  const hours = Math.floor(clamped / 3600);
+  const minutes = Math.floor((clamped % 3600) / 60);
+  const seconds = clamped % 60;
+  return `PT${hours ? `${hours}H` : ''}${minutes ? `${minutes}M` : ''}${seconds}S`;
+}

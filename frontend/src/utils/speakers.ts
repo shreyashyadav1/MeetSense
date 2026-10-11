@@ -1,17 +1,23 @@
-/** Speaker colours, handed out in order of first appearance. */
+import type { TranscriptSegment } from '../types';
+
+/**
+ * Speaker voices, handed out in order of first appearance. Each entry is a CSS
+ * color that points at a design token (see index.css), so the palette is
+ * defined once, in OKLCH, next to the rest of the colors.
+ */
 export const SPEAKER_COLORS = [
-  '#6366f1',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#f97316',
-  '#ec4899',
+  'var(--voice-1)',
+  'var(--voice-2)',
+  'var(--voice-3)',
+  'var(--voice-4)',
+  'var(--voice-5)',
+  'var(--voice-6)',
+  'var(--voice-7)',
+  'var(--voice-8)',
 ] as const;
 
-/** For segments whose speaker isn't known yet (e.g. interim results). */
-export const UNKNOWN_SPEAKER_COLOR = '#94a3b8';
+/** For segments whose speaker isn't known (yet). */
+export const UNKNOWN_SPEAKER_COLOR = 'var(--voice-unknown)';
 
 /**
  * Maps each speaker to a colour by order of first appearance, cycling through
@@ -31,13 +37,31 @@ export function speakerLabel(speaker: string): string {
   return speaker.trim() || 'Unknown speaker';
 }
 
-/** Up to two initials, e.g. "Speaker 2" -> "S2"; "?" when the speaker is unknown. */
-export function speakerInitials(speaker: string): string {
-  const words = speaker.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return '?';
-  return words
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+export interface SpeakerSummary {
+  speaker: string;
+  label: string;
+  color: string;
+  words: number;
+  /** Fraction of all transcribed words, from 0 to 1. */
+  share: number;
+}
+
+const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
+
+/** Who spoke, in order of first appearance, with how much of the conversation each one had. */
+export function summarizeSpeakers(segments: readonly TranscriptSegment[]): SpeakerSummary[] {
+  const colors = assignSpeakerColors(segments.map((segment) => segment.speaker));
+  const words = new Map<string, number>();
+  for (const segment of segments) {
+    words.set(segment.speaker, (words.get(segment.speaker) ?? 0) + countWords(segment.text));
+  }
+
+  const total = [...words.values()].reduce((sum, count) => sum + count, 0);
+  return [...words.entries()].map(([speaker, count]) => ({
+    speaker,
+    label: speakerLabel(speaker),
+    color: colors.get(speaker) ?? UNKNOWN_SPEAKER_COLOR,
+    words: count,
+    share: total > 0 ? count / total : 0,
+  }));
 }
