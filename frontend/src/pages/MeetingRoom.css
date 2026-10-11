@@ -1,0 +1,335 @@
+/*
+ * The meeting room: the transcript fills the page on the left and scrolls on
+ * its own; the recording rail on the right holds everything you operate.
+ * On narrow windows (MeetSense beside a call) the rail becomes a strip above
+ * the transcript.
+ */
+
+.room {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18.5rem;
+  /* On very short windows the page scrolls rather than squeezing the transcript away. */
+  grid-template-rows: auto minmax(16rem, 1fr);
+  grid-template-areas:
+    'head rail'
+    'transcript rail';
+  column-gap: var(--space-7);
+  width: 100%;
+  max-width: calc(77.5rem + 2 * var(--page-gutter));
+  margin: 0 auto;
+  padding: var(--space-6) var(--page-gutter) 0;
+}
+
+/* ===== Head ===== */
+.room__head {
+  grid-area: head;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-5);
+}
+
+.room__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.room__clock {
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.room__clock-label {
+  color: var(--graphite);
+  font-weight: 500;
+}
+
+.room__demo-tag {
+  border-color: var(--ink);
+}
+
+.room__demo-note {
+  max-width: 40rem;
+  color: var(--graphite);
+  font-size: var(--text-md);
+  line-height: 1.45;
+}
+
+.room__transcript {
+  grid-area: transcript;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ===== Rail ===== */
+.room__rail {
+  grid-area: rail;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  max-height: calc(100% - var(--space-6));
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  overflow-y: auto;
+  border-radius: var(--radius-m);
+  background: var(--shelf);
+}
+
+.rail-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.rail-block + .rail-block {
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--rule);
+}
+
+.rail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* ===== Microphone state: a tally light, steady rather than pulsing ===== */
+.mic-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-md);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.mic-state__mark {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  border: 2px solid var(--graphite);
+  border-radius: 50%;
+}
+
+.mic-state[data-state='recording'] .mic-state__mark {
+  border-color: var(--tally);
+  background: var(--tally);
+}
+
+.mic-state[data-state='paused'] .mic-state__mark {
+  border-color: var(--tally);
+}
+
+.mic-state[data-state='waiting'],
+.mic-state[data-state='paused'] {
+  color: var(--graphite);
+}
+
+.mic-state[data-state='error'] {
+  align-items: flex-start;
+  color: var(--danger-ink);
+  font-family: var(--font-voice);
+  font-stretch: 100%;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.mic-state[data-state='error'] .mic-state__mark {
+  margin-top: 0.2em;
+  border-color: var(--danger-ink);
+  border-radius: 2px;
+  background: var(--danger-ink);
+}
+
+.record-dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--tally);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--paper) 85%, transparent);
+}
+
+/* ===== Stream status ===== */
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.connection-status__mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.connection-status[data-tone='live'] .connection-status__mark {
+  background: currentColor;
+}
+
+.connection-status[data-tone='pending'],
+.connection-status[data-tone='off'] {
+  color: var(--graphite);
+}
+
+.connection-status[data-tone='warn'] {
+  color: var(--warn-ink);
+}
+
+.connection-status[data-tone='error'] {
+  color: var(--danger-ink);
+}
+
+.connection-status[data-tone='error'] .connection-status__mark {
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.rail-block .notice {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+/* ===== Narrow windows: the rail becomes a strip above the transcript ===== */
+@media (max-width: 999px) {
+  .room {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(16rem, 1fr);
+    grid-template-areas:
+      'head'
+      'rail'
+      'transcript';
+    padding-top: var(--space-5);
+  }
+
+  .room__head {
+    padding-bottom: var(--space-4);
+  }
+
+  .room__rail {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    max-height: none;
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    overflow: visible;
+  }
+
+  .rail-block + .rail-block {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .rail-block--record {
+    flex: 1 1 18rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .rail-block--record .mic-state {
+    flex: 1 1 auto;
+  }
+
+  .rail-block--record .level-trace {
+    flex: 0 1 8rem;
+  }
+
+  .rail-block--record .button,
+  .rail-block--end .button {
+    width: auto;
+  }
+
+  .rail-block--stream {
+    order: 3;
+    flex: 1 1 100%;
+  }
+
+  .rail-block--stream .rail-row {
+    justify-content: flex-start;
+  }
+
+  .rail-block--speakers,
+  .rail-block--end .rail-note {
+    display: none;
+  }
+}
+
+@media (max-width: 599px) {
+  .room {
+    padding-top: var(--space-4);
+  }
+
+  .room__title {
+    font-size: 1.75rem;
+  }
+
+  .room__demo-note {
+    font-size: var(--text-sm);
+  }
+
+  .room__rail {
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  /* Let the record controls reflow with the rest of the strip: status first, buttons last. */
+  .rail-block--record {
+    display: contents;
+  }
+
+  .rail-block--record > .notice {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .rail-block--record > .mic-state {
+    order: 1;
+    flex: 1 1 auto;
+  }
+
+  .rail-block--record > .level-trace {
+    order: 2;
+    flex: 0 1 7rem;
+  }
+
+  .rail-block--stream {
+    order: 3;
+  }
+
+  .rail-block--record > .button {
+    order: 4;
+    flex: 1 1 0;
+    width: auto;
+  }
+
+  .rail-block--end {
+    order: 5;
+    flex: 1 1 0;
+  }
+
+  .rail-block--end .button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,45 @@
+.speaker-share {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(3rem, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  list-style: none;
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-sm);
+}
+
+.speaker-share__item {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+
+.speaker-share__name {
+  color: var(--voice);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speaker-share__bar {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--shelf-strong);
+  overflow: hidden;
+}
+
+.speaker-share__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--voice);
+  transform-origin: left center;
+}
+
+.speaker-share__value {
+  color: var(--graphite);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

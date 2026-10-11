@@ -1,19 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Square, Clock, Loader2, AlertCircle, Mic, MicOff, FlaskConical } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { AlertCircle, FlaskConical, Loader2, MicOff, RotateCw, Square } from 'lucide-react';
 import { Layout } from '../components/Layout';
-import { TranscriptPanel } from '../components/TranscriptPanel';
+import { LevelTrace } from '../components/LevelTrace';
+import { SpeakerShare } from '../components/SpeakerShare';
 import { StatusBadge } from '../components/StatusBadge';
+import { TranscriptPanel } from '../components/TranscriptPanel';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useMeetingSocket, type UseMeetingSocketResult } from '../hooks/useMeetingSocket';
 import { useMicrophone, type UseMicrophoneResult } from '../hooks/useMicrophone';
 import { useRequest } from '../hooks/useRequest';
 import { getMeeting, endMeeting } from '../services/api';
 import { getApiErrorMessage, getErrorStatus } from '../services/errors';
 import { formatClock } from '../utils/format';
+import { summarizeSpeakers } from '../utils/speakers';
+import './MeetingRoom.css';
 
 const DEMO_MODE_EXPLANATION =
-  'The server has no speech-to-text provider configured, so it streams a scripted sample ' +
-  'meeting. Microphone audio is not transcribed in this mode.';
+  'This server has no speech-to-text provider, so it plays a scripted sample meeting. ' +
+  'Your microphone isn’t transcribed in this mode.';
 
 /** Time since `since`, re-rendering only itself once per second. */
 const ElapsedTime: React.FC<{ since: string }> = ({ since }) => {
@@ -27,24 +32,39 @@ const ElapsedTime: React.FC<{ since: string }> = ({ since }) => {
   return <>{formatClock((now - new Date(since).getTime()) / 1000, { padMinutes: true })}</>;
 };
 
-function describeMicState(
+type MicState = 'off' | 'waiting' | 'recording' | 'paused' | 'error';
+
+function describeMic(
   mic: Pick<UseMicrophoneResult, 'status' | 'error'>,
-  stream: Pick<UseMeetingSocketResult, 'status' | 'sessionId'>,
-): string {
+  stream: Pick<UseMeetingSocketResult, 'status' | 'sessionId' | 'streamComplete'>,
+): { state: MicState; text: string } {
   switch (mic.status) {
     case 'requesting':
-      return 'Waiting for microphone permission...';
+      return { state: 'waiting', text: 'Waiting for microphone permission…' };
     case 'active':
-      if (stream.sessionId !== null) return 'Recording...';
-      if (stream.status === 'stopping') return 'Finishing transcript...';
-      return 'Recording paused, waiting for the connection...';
+      if (stream.streamComplete) return { state: 'paused', text: 'Microphone on, transcription finished' };
+      if (stream.sessionId !== null) return { state: 'recording', text: 'Recording' };
+      if (stream.status === 'stopping') return { state: 'paused', text: 'Finishing the transcript…' };
+      return { state: 'paused', text: 'Recording paused until the connection is back…' };
     case 'denied':
     case 'error':
     case 'unsupported':
-      return mic.error ?? 'Microphone unavailable.';
+      return { state: 'error', text: mic.error ?? 'The microphone isn’t available.' };
     case 'idle':
-      return 'Click to start recording';
+      return { state: 'off', text: 'Microphone off' };
   }
+}
+
+function describeEmptyTranscript(
+  mic: Pick<UseMicrophoneResult, 'status'>,
+  stream: Pick<UseMeetingSocketResult, 'status' | 'mode'>,
+): string {
+  if (stream.status === 'failed') return 'Nothing was transcribed. Reconnect to try again.';
+  if (stream.mode === 'mock') return 'The sample meeting starts in a moment…';
+  if (stream.status !== 'connected') return 'Connecting to the transcription server…';
+  if (mic.status === 'active') return 'Listening. Lines appear here a moment after someone speaks.';
+  if (mic.status === 'requesting') return 'Allow microphone access to start transcribing.';
+  return 'Start recording, and the transcript appears here as people speak.';
 }
 
 export const MeetingRoom: React.FC = () => {
@@ -62,6 +82,11 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   const stream = useMeetingSocket(meetingId);
   const { segments, interim, status: connectionStatus } = stream;
   const mic = useMicrophone({ sessionId: stream.sessionId, onChunk: stream.sendAudio });
+  const speakers = useMemo(() => summarizeSpeakers(segments), [segments]);
+
+  const isRecording = mic.status === 'active';
+  const meetingTitle = meetingRequest.status === 'success' ? meetingRequest.data.title : null;
+  useDocumentTitle(meetingTitle && isRecording ? `${meetingTitle} (recording)` : meetingTitle);
 
   // Release the microphone once the session can no longer take audio.
   const sessionOver = connectionStatus === 'stopped' || connectionStatus === 'failed';
@@ -84,7 +109,7 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
       // 409 means it was already ended (e.g. from another tab), which is fine.
       if (getErrorStatus(error) !== 409) {
         setEndError(
-          getApiErrorMessage(error, { fallback: 'Could not end the meeting. Please try again.' }),
+          getApiErrorMessage(error, { fallback: 'Couldn’t end the meeting. Try again in a moment.' }),
         );
         setIsEnding(false);
         return;
@@ -110,9 +135,9 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   if (meetingRequest.status === 'loading') {
     return (
       <Layout activeMeetingId={meetingId}>
-        <div className="loading-state loading-state--page">
-          <Loader2 size={32} className="spin" />
-          <span>Loading meeting...</span>
+        <div className="page-state page-state--loading" role="status">
+          <Loader2 size={20} className="spin" aria-hidden="true" />
+          Loading the meeting…
         </div>
       </Layout>
     );
@@ -121,124 +146,148 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   if (meetingRequest.status === 'error') {
     return (
       <Layout activeMeetingId={meetingId}>
-        <div className="error-state">
-          <AlertCircle size={32} />
-          <h2>Could not load meeting</h2>
+        <div className="page-state">
+          <h1>Couldn’t open this meeting</h1>
           <p>
             {getApiErrorMessage(meetingRequest.error, {
-              fallback: 'Could not load the meeting. Please try again.',
-              byStatus: { 404: 'This meeting does not exist.' },
+              fallback: 'The meeting didn’t load. Check your connection and try again.',
+              byStatus: { 404: 'This meeting doesn’t exist. It may have been opened from an old link.' },
             })}
           </p>
-          <button className="btn btn--primary" onClick={() => navigate('/')}>
-            Back to Dashboard
-          </button>
+          <Link className="button button--primary" to="/">
+            Back to meetings
+          </Link>
         </div>
       </Layout>
     );
   }
 
   const meeting = meetingRequest.data;
-  const isRecording = mic.status === 'active';
-  const micStatusText = describeMicState(mic, stream);
+  const isDemo = stream.mode === 'mock';
+  const micState = describeMic(mic, stream);
+  const listening =
+    connectionStatus === 'connected' &&
+    !stream.streamComplete &&
+    (isDemo || (isRecording && stream.sessionId !== null));
 
   return (
-    <Layout activeMeetingId={meetingId}>
-      <div className="meeting-room">
-        {/* Top bar */}
-        <div className="meeting-room__topbar">
-          <div className="meeting-room__info">
-            <h1 className="meeting-room__title">{meeting.title}</h1>
-            <div className="meeting-room__meta">
-              <span className="meeting-room__timer">
-                <Clock size={14} />
-                <ElapsedTime since={meeting.started_at} />
+    <Layout activeMeetingId={meetingId} fill>
+      <div className="room">
+        <header className="room__head">
+          <h1 className="room__title">{meeting.title}</h1>
+          <div className="room__meta">
+            <p className="room__clock">
+              <span className="room__clock-label">Elapsed</span>{' '}
+              <ElapsedTime since={meeting.started_at} />
+            </p>
+            {isDemo && (
+              <span className="tag room__demo-tag">
+                <FlaskConical size={14} aria-hidden="true" />
+                Demo mode
               </span>
-              <StatusBadge status={connectionStatus} />
-              {stream.mode === 'mock' && (
-                <span className="demo-badge" title={DEMO_MODE_EXPLANATION}>
-                  <FlaskConical size={12} aria-hidden="true" />
-                  Demo mode — simulated transcript
-                </span>
-              )}
-            </div>
+            )}
           </div>
+          {isDemo && <p className="room__demo-note">{DEMO_MODE_EXPLANATION}</p>}
+        </header>
 
-          <div className="meeting-room__controls">
-            <span className="meeting-room__segment-count">
-              {segments.length} {segments.length === 1 ? 'segment' : 'segments'}
-            </span>
+        <aside className="room__rail" aria-label="Recording">
+          <section className="rail-block rail-block--record">
+            {mic.status === 'unsupported' ? (
+              <div className="notice notice--warn">
+                <MicOff size={18} aria-hidden="true" />
+                <p className="notice__body">{mic.error}</p>
+              </div>
+            ) : (
+              <>
+                <p
+                  className="mic-state"
+                  data-state={micState.state}
+                  role={micState.state === 'error' ? 'alert' : 'status'}
+                >
+                  <span className="mic-state__mark" aria-hidden="true" />
+                  <span>{micState.text}</span>
+                </p>
+                {isRecording && <LevelTrace level={mic.level} />}
+                <button
+                  type="button"
+                  className={`button button--block ${
+                    isRecording ? 'button--secondary' : 'button--primary'
+                  }`}
+                  onClick={() => void handleMicToggle()}
+                  disabled={connectionStatus === 'stopping' || isEnding}
+                >
+                  {isRecording ? (
+                    <>
+                      <Square size={14} fill="currentColor" aria-hidden="true" />
+                      Stop recording
+                    </>
+                  ) : mic.status === 'requesting' ? (
+                    'Cancel'
+                  ) : (
+                    <>
+                      <span className="record-dot" aria-hidden="true" />
+                      Start recording
+                    </>
+                  )}
+                </button>
+              </>
+            )}
+          </section>
+
+          <section className="rail-block rail-block--stream">
+            <p className="rail-row">
+              <span className="rail-label">Transcript</span>
+              <StatusBadge status={connectionStatus} complete={stream.streamComplete} />
+            </p>
+            <StreamNotice stream={stream} onViewMeeting={() => navigate(`/meeting/${meetingId}`)} />
+          </section>
+
+          {speakers.length > 0 && (
+            <section className="rail-block rail-block--speakers" aria-labelledby="room-speakers">
+              <h2 className="rail-label" id="room-speakers">
+                Speakers
+              </h2>
+              <SpeakerShare speakers={speakers} />
+            </section>
+          )}
+
+          <section className="rail-block rail-block--end">
+            {endError && (
+              <div className="notice notice--danger" role="alert">
+                <AlertCircle size={18} aria-hidden="true" />
+                <p className="notice__body">{endError}</p>
+              </div>
+            )}
             <button
-              className="btn btn--danger"
+              type="button"
+              className="button button--secondary button--block"
               onClick={() => void handleEndMeeting()}
               disabled={isEnding}
+              aria-describedby="end-meeting-hint"
             >
               {isEnding ? (
                 <>
-                  <Loader2 size={15} className="spin" />
-                  Ending...
+                  <Loader2 size={16} className="spin" aria-hidden="true" />
+                  Ending…
                 </>
               ) : (
-                <>
-                  <Square size={14} />
-                  End Meeting
-                </>
+                'End meeting'
               )}
             </button>
-          </div>
-        </div>
+            <p className="rail-note" id="end-meeting-hint">
+              Stops recording and saves the transcript.
+            </p>
+          </section>
+        </aside>
 
-        {endError && (
-          <div className="alert alert--error" role="alert">
-            <AlertCircle size={16} />
-            {endError}
-          </div>
-        )}
-
-        {/* Microphone control section */}
-        <div className="mic-section">
-          {mic.status === 'unsupported' ? (
-            <div className="alert alert--warning">
-              <MicOff size={16} />
-              {mic.error}
-            </div>
-          ) : (
-            <div className="mic-controls">
-              <button
-                className={`mic-btn${isRecording ? ' recording' : ''}`}
-                onClick={() => void handleMicToggle()}
-                disabled={connectionStatus === 'stopping' || isEnding}
-                aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-                title={micStatusText}
-              >
-                {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
-              </button>
-
-              <div className="mic-info">
-                <div className="audio-level-bar">
-                  <div className="audio-level-fill" style={{ width: `${mic.level}%` }} />
-                </div>
-                <span
-                  className={`mic-status-text${mic.error ? ' mic-status-text--error' : ''}`}
-                  role={mic.error ? 'alert' : undefined}
-                >
-                  {micStatusText}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Transcript area */}
-        <div className="meeting-room__transcript-wrapper">
-          <div className="meeting-room__transcript-header">
-            <h2 className="meeting-room__transcript-title">Live Transcript</h2>
-            <StreamNotice stream={stream} onViewMeeting={() => navigate(`/meeting/${meetingId}`)} />
-          </div>
+        <div className="room__transcript">
           <TranscriptPanel
+            variant="live"
             segments={segments}
-            isLive={!sessionOver && !stream.streamComplete}
             interimSegment={interim}
+            isLive={!sessionOver && !stream.streamComplete}
+            listening={listening}
+            emptyMessage={describeEmptyTranscript(mic, stream)}
           />
         </div>
       </div>
@@ -251,42 +300,53 @@ interface StreamNoticeProps {
   onViewMeeting: () => void;
 }
 
-/** Connection problems and end-of-stream notes shown above the transcript. */
+/** Connection problems and end-of-stream notes, next to the stream status. */
 const StreamNotice: React.FC<StreamNoticeProps> = ({ stream, onViewMeeting }) => {
   if (stream.status === 'reconnecting') {
     const { reconnect } = stream;
-    const attempt = reconnect ? ` (attempt ${reconnect.attempt} of ${reconnect.maxAttempts})` : '';
+    const attempt = reconnect ? `, attempt ${reconnect.attempt} of ${reconnect.maxAttempts}` : '';
     return (
-      <div className="alert alert--warning alert--inline" role="status">
-        {stream.error?.message ?? 'Connection lost.'} Reconnecting{attempt}...
+      <div className="notice notice--warn" role="status">
+        <RotateCw size={18} className="spin" aria-hidden="true" />
+        <div className="notice__body">
+          <p>
+            {stream.error?.message ?? 'Connection lost.'} Reconnecting{attempt}…
+          </p>
+          <p className="notice__hint">Lines already transcribed stay here.</p>
+        </div>
       </div>
     );
   }
 
   if (stream.status === 'failed') {
     return (
-      <div className="alert alert--error alert--inline" role="alert">
-        {stream.error?.message ?? 'Lost the connection to the transcription server.'}
-        {stream.error?.code === 'meeting_ended' ? (
-          <button className="btn btn--ghost btn--sm" onClick={onViewMeeting}>
-            View meeting
-          </button>
-        ) : (
-          <button className="btn btn--ghost btn--sm" onClick={stream.connect}>
-            Retry
-          </button>
-        )}
+      <div className="notice notice--danger" role="alert">
+        <AlertCircle size={18} aria-hidden="true" />
+        <div className="notice__body">
+          <p>{stream.error?.message ?? 'Lost the connection to the transcription server.'}</p>
+          <div className="notice__actions">
+            {stream.error?.code === 'meeting_ended' ? (
+              <button type="button" className="button button--secondary button--small" onClick={onViewMeeting}>
+                View meeting
+              </button>
+            ) : (
+              <button type="button" className="button button--secondary button--small" onClick={stream.connect}>
+                Reconnect
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
 
   if (stream.streamComplete) {
     return (
-      <span className="meeting-room__stream-note" role="status">
+      <p className="rail-note" role="status">
         {stream.mode === 'mock'
-          ? 'Simulated transcript complete.'
-          : 'Transcription finished. Start recording to begin a new session.'}
-      </span>
+          ? 'The sample meeting has finished. End the meeting to see the saved transcript.'
+          : 'Transcription finished. Start recording to continue in a new session.'}
+      </p>
     );
   }
 
