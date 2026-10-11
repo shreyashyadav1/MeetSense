@@ -53,12 +53,12 @@ case where that comparison is trustworthy.
 
 ```bash
 # From the repo root. Ports chosen to avoid clashing with other local services.
-docker run -d --rm --name mse-postgres -e POSTGRES_PASSWORD=postgres -p 5434:5432 postgres:16
+docker run -d --rm --name mse-postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meetsense_test -p 5434:5432 postgres:16
 docker run -d --rm --name mse-redis -p 6381:6379 redis:7
 
 cd backend
 python3.11 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-DATABASE_URL="postgresql://postgres:postgres@localhost:5434/postgres" .venv/bin/alembic upgrade head
+DATABASE_URL="postgresql://postgres:postgres@localhost:5434/meetsense_test" .venv/bin/alembic upgrade head
 
 # Start the backend in mock mode, pointed at those containers, with two
 # per-IP defensive limits raised — the load generator runs from one machine
