@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { AlertCircle, FlaskConical, Loader2, MicOff, RotateCw, Square } from 'lucide-react';
 import { Layout } from '../components/Layout';
@@ -78,6 +78,8 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   const meetingRequest = useRequest(meetingId, getMeeting);
   const [isEnding, setIsEnding] = useState(false);
   const [endError, setEndError] = useState<string | null>(null);
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
+  const confirmEndButton = useRef<HTMLButtonElement>(null);
 
   const stream = useMeetingSocket(meetingId);
   const { segments, interim, status: connectionStatus } = stream;
@@ -87,6 +89,18 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   const isRecording = mic.status === 'active';
   const meetingTitle = meetingRequest.status === 'success' ? meetingRequest.data.title : null;
   useDocumentTitle(meetingTitle && isRecording ? `${meetingTitle} (recording)` : meetingTitle);
+
+  // Closing the tab mid-call would silently stop the recording, so ask first.
+  useEffect(() => {
+    if (!isRecording) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isRecording]);
+
+  useEffect(() => {
+    if (confirmingEnd) confirmEndButton.current?.focus();
+  }, [confirmingEnd]);
 
   // Release the microphone once the session can no longer take audio.
   const sessionOver = connectionStatus === 'stopped' || connectionStatus === 'failed';
@@ -239,7 +253,7 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
               <span className="rail-label">Transcript</span>
               <StatusBadge status={connectionStatus} complete={stream.streamComplete} />
             </p>
-            <StreamNotice stream={stream} onViewMeeting={() => navigate(`/meeting/${meetingId}`)} />
+            <StreamNotice stream={stream} meetingHref={`/meeting/${meetingId}`} />
           </section>
 
           {speakers.length > 0 && (
@@ -251,32 +265,69 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
             </section>
           )}
 
-          <section className="rail-block rail-block--end">
+          <section
+            className={`rail-block rail-block--end${confirmingEnd ? ' rail-block--confirming' : ''}`}
+          >
             {endError && (
               <div className="notice notice--danger" role="alert">
                 <AlertCircle size={18} aria-hidden="true" />
                 <p className="notice__body">{endError}</p>
               </div>
             )}
-            <button
-              type="button"
-              className="button button--secondary button--block"
-              onClick={() => void handleEndMeeting()}
-              disabled={isEnding}
-              aria-describedby="end-meeting-hint"
-            >
-              {isEnding ? (
-                <>
-                  <Loader2 size={16} className="spin" aria-hidden="true" />
-                  Ending…
-                </>
-              ) : (
-                'End meeting'
-              )}
-            </button>
-            <p className="rail-note" id="end-meeting-hint">
-              Stops recording and saves the transcript.
-            </p>
+            {confirmingEnd ? (
+              <div
+                className="end-confirm"
+                role="group"
+                aria-labelledby="end-confirm-question"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && !isEnding) setConfirmingEnd(false);
+                }}
+              >
+                <p className="end-confirm__question" id="end-confirm-question">
+                  End the meeting? Recording stops and you can’t add to the transcript afterwards.
+                </p>
+                <div className="end-confirm__actions">
+                  <button
+                    ref={confirmEndButton}
+                    type="button"
+                    className="button button--primary"
+                    onClick={() => void handleEndMeeting()}
+                    disabled={isEnding}
+                  >
+                    {isEnding ? (
+                      <>
+                        <Loader2 size={16} className="spin" aria-hidden="true" />
+                        Ending…
+                      </>
+                    ) : (
+                      'End and save'
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    onClick={() => setConfirmingEnd(false)}
+                    disabled={isEnding}
+                  >
+                    Keep going
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="button button--secondary button--block"
+                  onClick={() => setConfirmingEnd(true)}
+                  aria-describedby="end-meeting-hint"
+                >
+                  End meeting
+                </button>
+                <p className="rail-note" id="end-meeting-hint">
+                  Stops recording and saves the transcript.
+                </p>
+              </>
+            )}
           </section>
         </aside>
 
@@ -297,11 +348,11 @@ const MeetingRoomView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
 
 interface StreamNoticeProps {
   stream: UseMeetingSocketResult;
-  onViewMeeting: () => void;
+  meetingHref: string;
 }
 
 /** Connection problems and end-of-stream notes, next to the stream status. */
-const StreamNotice: React.FC<StreamNoticeProps> = ({ stream, onViewMeeting }) => {
+const StreamNotice: React.FC<StreamNoticeProps> = ({ stream, meetingHref }) => {
   if (stream.status === 'reconnecting') {
     const { reconnect } = stream;
     const attempt = reconnect ? `, attempt ${reconnect.attempt} of ${reconnect.maxAttempts}` : '';
@@ -326,9 +377,9 @@ const StreamNotice: React.FC<StreamNoticeProps> = ({ stream, onViewMeeting }) =>
           <p>{stream.error?.message ?? 'Lost the connection to the transcription server.'}</p>
           <div className="notice__actions">
             {stream.error?.code === 'meeting_ended' ? (
-              <button type="button" className="button button--secondary button--small" onClick={onViewMeeting}>
+              <Link className="button button--secondary button--small" to={meetingHref}>
                 View meeting
-              </button>
+              </Link>
             ) : (
               <button type="button" className="button button--secondary button--small" onClick={stream.connect}>
                 Reconnect

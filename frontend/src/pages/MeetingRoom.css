@@ -81,6 +81,7 @@
   margin-bottom: var(--space-6);
   padding: var(--space-5);
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--radius-m);
   background: var(--shelf);
 }
@@ -150,7 +151,7 @@
 .mic-state[data-state='error'] .mic-state__mark {
   margin-top: 0.2em;
   border-color: var(--danger-ink);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: var(--danger-ink);
 }
 
@@ -199,13 +200,34 @@
 }
 
 .connection-status[data-tone='error'] .connection-status__mark {
-  border-radius: 1px;
+  border-radius: 0;
   background: currentColor;
 }
 
 .rail-block .notice {
   padding: var(--space-3);
   font-size: var(--text-sm);
+}
+
+.end-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.end-confirm__question {
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.end-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.end-confirm__actions .button--primary {
+  flex: 1 1 auto;
 }
 
 /* ===== Narrow windows: the rail becomes a strip above the transcript ===== */
@@ -274,6 +296,10 @@
   .rail-block--end .rail-note {
     display: none;
   }
+
+  .rail-block--confirming {
+    flex: 1 1 100%;
+  }
 }
 
 @media (max-width: 599px) {
@@ -327,6 +353,10 @@
   .rail-block--end {
     order: 5;
     flex: 1 1 0;
+  }
+
+  .rail-block--confirming {
+    flex-basis: 100%;
   }
 
   .rail-block--end .button {

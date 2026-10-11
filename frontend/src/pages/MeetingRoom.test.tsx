@@ -88,11 +88,26 @@ describe('MeetingRoom', () => {
     expect(screen.getByText('Connecting…')).toBeInTheDocument();
   });
 
+  it('asks before ending, and keeps the meeting going if the user changes their mind', async () => {
+    const ws = await renderRoom();
+    act(() => ws.accept());
+
+    await userEvent.click(screen.getByRole('button', { name: 'End meeting' }));
+    expect(screen.getByRole('button', { name: 'End and save' })).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep going' }));
+
+    expect(ws.sentMessages).not.toContainEqual({ type: 'stop' });
+    expect(endMeeting).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'End meeting' })).toBeInTheDocument();
+  });
+
   it('sends stop and waits for the flush before ending the meeting', async () => {
     const ws = await renderRoom();
     act(() => ws.accept());
 
     await userEvent.click(screen.getByRole('button', { name: 'End meeting' }));
+    expect(ws.sentMessages).not.toContainEqual({ type: 'stop' });
+    await userEvent.click(screen.getByRole('button', { name: 'End and save' }));
     expect(ws.sentMessages).toContainEqual({ type: 'stop' });
     expect(endMeeting).not.toHaveBeenCalled();
 
