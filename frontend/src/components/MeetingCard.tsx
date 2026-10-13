@@ -1,28 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
 import { Video, Clock, ArrowRight } from 'lucide-react';
 import type { Meeting } from '../types';
+import { formatDateTime, formatDuration } from '../utils/format';
 import { MeetingStatusBadge } from './StatusBadge';
 
 interface MeetingCardProps {
   meeting: Meeting;
-}
-
-function formatDuration(startedAt: string, endedAt?: string): string {
-  const start = parseISO(startedAt);
-  const end = endedAt ? parseISO(endedAt) : new Date();
-  const diffMs = end.getTime() - start.getTime();
-  const totalSeconds = Math.floor(diffMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes >= 60) {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  }
-  return `${minutes}m ${seconds}s`;
 }
 
 export const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
@@ -36,12 +20,7 @@ export const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
     }
   };
 
-  let formattedDate = '';
-  try {
-    formattedDate = format(parseISO(meeting.started_at), 'MMM d, yyyy · h:mm a');
-  } catch {
-    formattedDate = meeting.started_at;
-  }
+  const formattedDate = formatDateTime(meeting.started_at, 'MMM d, yyyy · h:mm a');
 
   return (
     <div className="meeting-card">

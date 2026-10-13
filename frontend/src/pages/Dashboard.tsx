@@ -4,10 +4,23 @@ import { Plus, Mic, X, Loader2, RefreshCw } from 'lucide-react';
 import { Layout } from '../components/Layout';
 import { MeetingCard } from '../components/MeetingCard';
 import { useMeetings } from '../hooks/useMeetings';
+import { getApiErrorMessage } from '../services/errors';
+import {
+  MEETING_TITLE_MAX_LENGTH,
+  meetingTitleLength,
+  validateMeetingTitle,
+} from '../utils/validation';
+
+const CREATE_ERRORS = {
+  fallback: 'Could not create the meeting. Please try again.',
+  byStatus: {
+    429: "You're creating meetings too quickly. Please wait a minute and try again.",
+  },
+};
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { meetings, isLoading, error, createMeeting, refresh } = useMeetings();
+  const { meetings, isLoading, isRefreshing, error, createMeeting, refresh } = useMeetings();
 
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -15,6 +28,10 @@ export const Dashboard: React.FC = () => {
   const [createError, setCreateError] = useState<string | null>(null);
 
   const activeMeeting = meetings.find((m) => m.status === 'active');
+  const titleLength = meetingTitleLength(newTitle);
+  const titleError = validateMeetingTitle(newTitle);
+  // Don't nag about an empty field before the user has typed anything.
+  const visibleTitleError = newTitle.length > 0 ? titleError : null;
 
   const handleOpenModal = () => {
     setNewTitle('');
@@ -32,19 +49,17 @@ export const Dashboard: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const title = newTitle.trim();
-    if (!title) return;
+    if (titleError || isCreating) return;
 
     setIsCreating(true);
     setCreateError(null);
 
     try {
-      const meeting = await createMeeting(title);
+      const meeting = await createMeeting(newTitle.trim());
       setShowModal(false);
       navigate(`/meeting/${meeting.id}/live`);
     } catch (err) {
-      console.error('[Dashboard] Failed to create meeting:', err);
-      setCreateError('Could not create meeting. Make sure the backend is running.');
+      setCreateError(getApiErrorMessage(err, CREATE_ERRORS));
     } finally {
       setIsCreating(false);
     }
@@ -70,9 +85,9 @@ export const Dashboard: React.FC = () => {
               className="btn btn--ghost btn--sm"
               onClick={refresh}
               aria-label="Refresh meetings"
-              disabled={isLoading}
+              disabled={isLoading || isRefreshing}
             >
-              <RefreshCw size={14} className={isLoading ? 'spin' : ''} />
+              <RefreshCw size={14} className={isLoading || isRefreshing ? 'spin' : ''} />
               Refresh
             </button>
             <button className="btn btn--primary" onClick={handleOpenModal}>
@@ -167,8 +182,21 @@ export const Dashboard: React.FC = () => {
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
                   disabled={isCreating}
-                  maxLength={120}
+                  aria-invalid={visibleTitleError !== null}
+                  aria-describedby="meeting-title-hint"
                 />
+                <div className="form-field__footer" id="meeting-title-hint">
+                  <span className="form-hint form-hint--error" role="alert">
+                    {visibleTitleError}
+                  </span>
+                  <span
+                    className={`form-hint${
+                      titleLength > MEETING_TITLE_MAX_LENGTH ? ' form-hint--error' : ''
+                    }`}
+                  >
+                    {titleLength}/{MEETING_TITLE_MAX_LENGTH}
+                  </span>
+                </div>
               </div>
 
               {createError && (
@@ -189,7 +217,7 @@ export const Dashboard: React.FC = () => {
                 <button
                   type="submit"
                   className="btn btn--primary"
-                  disabled={!newTitle.trim() || isCreating}
+                  disabled={titleError !== null || isCreating}
                 >
                   {isCreating ? (
                     <>

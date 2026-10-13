@@ -309,7 +309,8 @@ input, textarea {
   letter-spacing: 0.01em;
 }
 
-.status-badge--connecting {
+.status-badge--connecting,
+.status-badge--idle {
   background: rgba(156, 163, 175, 0.12);
   color: #9ca3af;
   border: 1px solid rgba(156, 163, 175, 0.2);
@@ -395,6 +396,44 @@ input, textarea {
   margin-bottom: 0;
   padding: 8px 12px;
   font-size: 12.5px;
+}
+
+.alert--info {
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+/* ===== OFFLINE BANNER ===== */
+.offline-banner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px 12px;
+}
+
+.offline-banner .alert {
+  margin-bottom: 0;
+}
+
+.offline-banner__dismiss {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 3px;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.offline-banner__dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+  .offline-banner {
+    padding: 0 16px 12px;
+  }
 }
 
 /* ===== LOADING & ERROR STATES ===== */
@@ -751,6 +790,27 @@ input, textarea {
   opacity: 0.5;
 }
 
+.form-input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.form-field__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 18px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.form-hint--error {
+  color: var(--error);
+}
+
 /* ===== MEETING ROOM ===== */
 .meeting-room {
   display: flex;
@@ -785,7 +845,29 @@ input, textarea {
 .meeting-room__meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+/* Shown when the server streams a scripted transcript instead of real speech-to-text. */
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  cursor: help;
+}
+
+.meeting-room__stream-note {
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 
 .meeting-room__timer {
@@ -1251,6 +1333,10 @@ input, textarea {
   font-weight: 500;
 }
 
+.mic-status-text--error {
+  color: var(--error);
+}
+
 /* ===== INTERIM TRANSCRIPT ===== */
 .transcript-group.interim {
   opacity: 0.5;
@@ -1278,11 +1364,53 @@ input, textarea {
 .interim-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 /* ===== INSIGHTS PANEL ===== */
-.insights-panel { }
+.insights-card__body {
+  padding: 1rem;
+}
 
 .insights-generate {
   text-align: center;
   padding: 2rem;
+}
+
+.insights-generate__icon {
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.insights-generate__icon--compact {
+  margin-bottom: 0.75rem;
+}
+
+.insights-generate__status,
+.insights-generate__description {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.insights-generate__description {
+  margin-bottom: 1.25rem;
+}
+
+.insights-generate__hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+.insights-panel__alert {
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.insights-panel__actions {
+  margin-top: 1rem;
+  text-align: right;
+}
+
+.insights-panel__actions .insights-panel__alert {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .insights-grid {
@@ -1305,6 +1433,42 @@ input, textarea {
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 0.75rem;
+}
+
+.insight-card__title--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.insight-card__text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.insight-card__empty {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.insight-card__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.insight-card__icon--action {
+  color: var(--accent);
+}
+
+.insight-card__icon--decision {
+  color: var(--success);
+  fill: var(--success);
+  margin-top: 5px;
+}
+
+.insight-card__icon--question {
+  color: var(--warning);
 }
 
 .insight-card__list {
