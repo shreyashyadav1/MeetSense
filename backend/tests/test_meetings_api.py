@@ -6,6 +6,7 @@ import groq
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.models.schemas import TranscriptSegment
 from app.services.smart_meeting_store import DatabaseUnavailableError, smart_meeting_store
 from tests.fakes import GROQ_REQUEST, VALID_INSIGHTS, FakeGroq
@@ -190,6 +191,19 @@ def test_rate_limit_answers_with_detail_and_retry_after(
     assert limited.status_code == 429
     assert limited.json()["detail"].startswith("Rate limit exceeded: 20 per 1 minute")
     assert int(limited.headers["Retry-After"]) >= 1
+
+
+def test_rate_limit_is_configurable(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Raised via CREATE_MEETING_RATE_LIMIT so a local load test can provision meetings fast."""
+    from app.core.rate_limit import limiter
+
+    monkeypatch.setattr(limiter, "enabled", True)
+    monkeypatch.setattr(settings, "create_meeting_rate_limit", "2/minute")
+    create_meeting(client)
+    create_meeting(client)
+    limited = client.post("/api/meetings", json={"title": "One too many"})
+    assert limited.status_code == 429
+    assert limited.json()["detail"].startswith("Rate limit exceeded: 2 per 1 minute")
 
 
 def test_the_app_and_routers_share_one_limiter() -> None:

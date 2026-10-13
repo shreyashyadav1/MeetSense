@@ -1,0 +1,44 @@
+{
+  "meeting_id": "brightpath-planning-ai-tutor",
+  "meeting_type": "planning",
+  "company": "BrightPath Learning",
+  "title": "BrightPath Planning - AI Tutor Feature Scoping",
+  "duration_minutes": 28,
+  "participants": ["Renata Silva", "Grace Eze", "Oliver Bennett", "Fatima Siddiqui"],
+  "transcript": [
+    {"speaker": "Renata Silva", "text": "I want today's planning session focused on scoping the AI tutor feature - I think it could be a real differentiator for next year's renewal cycle."},
+    {"speaker": "Grace Eze", "text": "Agreed. At a high level there are two versions: a simple version that just answers questions about the current lesson's content, and a more ambitious version that adapts practice problems to a student's specific mistakes."},
+    {"speaker": "Oliver Bennett", "text": "The simple version is maybe three weeks - mostly prompt engineering against our existing lesson content plus a chat UI. The adaptive version is a much bigger lift, probably two to three months, because it needs to track mistake patterns over time."},
+    {"speaker": "Renata Silva", "text": "Given the renewal cycle is in four months, let's scope the simple version for this cycle and treat adaptive practice as a follow-up next year."},
+    {"speaker": "Grace Eze", "text": "That's the right call. Fatima, what does the chat UI need design-wise?"},
+    {"speaker": "Fatima Siddiqui", "text": "I'll need about a week for a first design pass - I want it to feel like a helpful tutor, not a generic chatbot. I'll mock up two directions and we can pick one."},
+    {"speaker": "Oliver Bennett", "text": "One technical risk to flag - if a student asks something totally off-topic, we need guardrails so the AI doesn't just make something up or go off the rails. I want to scope time for that."},
+    {"speaker": "Renata Silva", "text": "Good catch, that's non-negotiable for something aimed at kids. Build that in as core scope, not an afterthought."},
+    {"speaker": "Oliver Bennett", "text": "Understood, I'll budget an extra week for guardrails and testing on top of the three weeks."},
+    {"speaker": "Grace Eze", "text": "So four weeks total for the simple version, with Fatima's designs ready in week one."},
+    {"speaker": "Renata Silva", "text": "One open question I keep going back and forth on - do we launch this to all students at once, or pilot with a few partner schools first?"},
+    {"speaker": "Grace Eze", "text": "I'd lean pilot, but let's decide once we see the first working version rather than now."},
+    {"speaker": "Renata Silva", "text": "Fair, let's revisit that in three weeks."},
+    {"speaker": "Grace Eze", "text": "I'll get design and engineering kicked off this week."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "The AI tutor feature will launch as a simple question-answering version this cycle, not the more ambitious adaptive-practice version",
+      "The simple version is scoped at about four weeks including safety guardrails",
+      "Guardrails against off-topic or fabricated answers are treated as core scope, not optional",
+      "Whether to launch broadly or pilot with partner schools first will be decided later"
+    ],
+    "action_items": [
+      {"owner": "Fatima Siddiqui", "task": "Deliver a first design pass for the AI tutor chat UI within a week"},
+      {"owner": "Oliver Bennett", "task": "Build the AI tutor with guardrails against off-topic or fabricated answers"},
+      {"owner": "Grace Eze", "task": "Kick off design and engineering work on the AI tutor this week"}
+    ],
+    "decisions": [
+      "Scope the AI tutor feature to the simple question-answering version for this renewal cycle, not adaptive practice",
+      "Treat safety guardrails as core scope for the AI tutor, not an optional add-on"
+    ],
+    "open_questions": [
+      "Should the AI tutor launch to all students at once, or pilot with a few partner schools first?"
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "meeting_id": "orbitlytics-standup-01",
+  "meeting_type": "standup",
+  "company": "Orbitlytics",
+  "title": "Orbitlytics Daily Standup - API Rate Limiting Rollout",
+  "duration_minutes": 12,
+  "participants": ["Priya Nandakumar", "Jae-won Lee", "Sofia Marchetti", "Tomasz Kowalski"],
+  "transcript": [
+    {"speaker": "Priya Nandakumar", "text": "Morning everyone. Let's do a quick round on the rate limiting rollout before we break out."},
+    {"speaker": "Jae-won Lee", "text": "Backend's done - the token bucket limiter is live on staging and response headers now include X-RateLimit-Remaining."},
+    {"speaker": "Priya Nandakumar", "text": "Nice. Any issues so far?"},
+    {"speaker": "Jae-won Lee", "text": "One thing - when a client gets throttled we just return a bare 429 with no body. Sofia, does the frontend handle that gracefully right now?"},
+    {"speaker": "Sofia Marchetti", "text": "Not yet, it just shows the generic 'something went wrong' toast. I can add a proper message, something like 'You're making requests too quickly, please slow down,' but I'll need the retry-after header wired up too."},
+    {"speaker": "Jae-won Lee", "text": "It's already in the response headers, Retry-After in seconds. I'll add it to the docs today."},
+    {"speaker": "Sofia Marchetti", "text": "Great, I'll pick that up this afternoon and have the friendly error message ready by tomorrow."},
+    {"speaker": "Priya Nandakumar", "text": "Perfect. Tomasz, how's QA looking?"},
+    {"speaker": "Tomasz Kowalski", "text": "Mostly green. There's one flaky test in the checkout integration suite - about one in five runs it times out waiting for the cart total to update. Not sure yet if it's related to the rate limiter or a pre-existing race condition."},
+    {"speaker": "Priya Nandakumar", "text": "Let's not block the rollout on that if it's unrelated, but can you dig into it today so we know which bucket it's in?"},
+    {"speaker": "Tomasz Kowalski", "text": "Yeah, I'll investigate today and report back."},
+    {"speaker": "Priya Nandakumar", "text": "Okay. If staging holds up over the weekend with no new issues, let's roll this out to production early next week, Monday or Tuesday."},
+    {"speaker": "Jae-won Lee", "text": "Works for me."},
+    {"speaker": "Sofia Marchetti", "text": "One open question - should the rate limit threshold be configurable per API key tier? Some of our enterprise customers are going to hit the default limit fast."},
+    {"speaker": "Priya Nandakumar", "text": "Good question, I don't have an answer yet - let's raise it with Derek and figure it out before enterprise customers start complaining. For now the default ships as-is."},
+    {"speaker": "Priya Nandakumar", "text": "Alright, that's it for today. Thanks everyone."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Rate limiting is live on staging with Retry-After headers",
+      "Frontend will add a friendlier error message for throttled requests",
+      "QA is investigating a flaky checkout integration test",
+      "Production rollout is planned for early next week if staging holds"
+    ],
+    "action_items": [
+      {"owner": "Sofia Marchetti", "task": "Add a friendly rate-limit error message using the Retry-After header"},
+      {"owner": "Jae-won Lee", "task": "Document the Retry-After header for the frontend team"},
+      {"owner": "Tomasz Kowalski", "task": "Investigate the flaky checkout integration test"}
+    ],
+    "decisions": [
+      "Roll out rate limiting to production early next week if staging holds over the weekend"
+    ],
+    "open_questions": [
+      "Should the rate limit threshold be configurable per API key tier for enterprise customers?"
+    ]
+  }
+}
