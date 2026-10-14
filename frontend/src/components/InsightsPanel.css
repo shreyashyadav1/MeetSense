@@ -1,0 +1,130 @@
+.insights,
+.insights-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.insights-start__text {
+  max-width: 38rem;
+  font-size: var(--text-lg);
+  line-height: 1.55;
+}
+
+.insights-start__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.insights-start__blocked {
+  color: var(--graphite);
+  font-size: var(--text-sm);
+}
+
+.insights-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.insights-progress {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.insights-progress > svg {
+  margin-top: 0.15em;
+}
+
+.insights-progress__title {
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-md);
+  font-weight: 650;
+}
+
+.insights-progress__text {
+  color: var(--graphite);
+}
+
+/* ===== Insight sections ===== */
+.insight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  line-height: 1.55;
+}
+
+.insight h3 {
+  color: var(--graphite);
+}
+
+.insight--summary p {
+  max-width: 40rem;
+}
+
+.insight__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: 1.25em;
+}
+
+.insight__list li::marker {
+  color: var(--graphite);
+}
+
+.insight__empty {
+  color: var(--graphite);
+  font-size: var(--text-md);
+}
+
+.insight__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+
+.letter {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-m);
+  background: var(--shelf);
+  font-size: var(--text-md);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.insight__copy-status {
+  min-height: 1.25rem;
+  color: var(--danger-ink);
+  font-size: var(--text-sm);
+}
+
+.insights__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--rule);
+}
+
+.insights__footer .notice {
+  flex: 1 1 100%;
+}
+
+.insights__generated {
+  flex: 1 1 auto;
+  color: var(--graphite);
+  font-family: var(--font-room);
+  font-stretch: 87.5%;
+  font-size: var(--text-sm);
+}

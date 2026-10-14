@@ -1,41 +1,33 @@
 import React from 'react';
-import type { ConnectionStatus, MeetingStatus } from '../types';
+import type { ConnectionStatus } from '../types';
 
 interface StatusBadgeProps {
   status: ConnectionStatus;
+  /** The transcription source has finished, even though the socket is still open. */
+  complete?: boolean;
 }
 
-type Tone = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
+type Tone = 'pending' | 'live' | 'warn' | 'off' | 'error';
 
-const STATUS_CONFIG: Record<ConnectionStatus, { label: string; tone: Tone; pulse?: boolean }> = {
-  idle: { label: 'Connecting', tone: 'connecting' },
-  connecting: { label: 'Connecting', tone: 'connecting' },
-  connected: { label: 'Live', tone: 'connected', pulse: true },
-  reconnecting: { label: 'Reconnecting', tone: 'disconnected' },
-  stopping: { label: 'Finishing', tone: 'idle' },
-  stopped: { label: 'Stopped', tone: 'idle' },
+const STATUS_CONFIG: Record<ConnectionStatus, { label: string; tone: Tone }> = {
+  idle: { label: 'Connecting…', tone: 'pending' },
+  connecting: { label: 'Connecting…', tone: 'pending' },
+  connected: { label: 'Live', tone: 'live' },
+  reconnecting: { label: 'Reconnecting…', tone: 'warn' },
+  stopping: { label: 'Finishing…', tone: 'pending' },
+  stopped: { label: 'Stopped', tone: 'off' },
   failed: { label: 'Disconnected', tone: 'error' },
 };
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  const { label, tone, pulse } = STATUS_CONFIG[status];
+/** State of the live transcript stream: a small shape plus a word, never color alone. */
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, complete = false }) => {
+  const { label, tone } =
+    complete && status === 'connected' ? { label: 'Finished', tone: 'off' } : STATUS_CONFIG[status];
 
   return (
-    <span className={`status-badge status-badge--${tone}`}>
-      <span className={`status-dot ${pulse ? 'status-dot--pulse' : ''}`} />
-      {label}
-    </span>
-  );
-};
-
-interface MeetingStatusBadgeProps {
-  status: MeetingStatus;
-}
-
-export const MeetingStatusBadge: React.FC<MeetingStatusBadgeProps> = ({ status }) => {
-  return (
-    <span className={`meeting-badge meeting-badge--${status}`}>
-      {status === 'active' ? 'Active' : 'Ended'}
+    <span className="connection-status" data-tone={tone}>
+      <span className="connection-status__mark" aria-hidden="true" />
+      <span>{label}</span>
     </span>
   );
 };
