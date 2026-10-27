@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 MeetingStatus = Literal["active", "ended"]
 
 TITLE_MAX_LENGTH = 120
+EXPORT_MAX_ITEMS = 20
 
 
 class Meeting(BaseModel):
@@ -56,6 +57,26 @@ class MeetingInsights(BaseModel):
     questions_raised: list[str] = Field(default_factory=list)
     follow_up_email: str
     generated_at: datetime
+
+
+class ExportActionItemsRequest(BaseModel):
+    items: list[Annotated[int, Field(ge=0)]] = Field(
+        min_length=1,
+        max_length=EXPORT_MAX_ITEMS,
+        description="Indexes into the meeting's action_items: the ones approved for export.",
+    )
+
+
+class ExportedIssue(BaseModel):
+    action_item: str
+    number: int
+    url: str
+    created: bool = Field(description="False when an earlier export already filed this item.")
+
+
+class ExportActionItemsResponse(BaseModel):
+    repository: str
+    issues: list[ExportedIssue]
 
 
 class HealthResponse(BaseModel):

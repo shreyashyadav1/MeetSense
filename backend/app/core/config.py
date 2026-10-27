@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Annotated, Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -27,6 +28,8 @@ DEFAULT_ALLOWED_ORIGINS: tuple[str, ...] = (
     # Production frontend
     "https://meet-sense.vercel.app",
 )
+
+_REPOSITORY = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}")
 
 _ASYNCPG_SCHEME = "postgresql+asyncpg"
 _POSTGRES_SCHEMES = frozenset(
@@ -80,6 +83,16 @@ class Settings(BaseSettings):
     # Longer transcripts are shortened (start and end kept) before prompting.
     ai_max_transcript_chars: int = Field(default=32_000, ge=1_000)
 
+    # --- GitHub Issues export -----------------------------------------------
+    # Export is enabled only when all three are set. The token needs Issues
+    # read/write on the one repository; callers must send GITHUB_EXPORT_KEY.
+    github_token: str = ""
+    github_repository: str = ""
+    github_export_key: str = ""
+    github_issue_label: str = Field(default="meetsense", min_length=1, max_length=50)
+    github_api_url: str = "https://api.github.com"
+    github_timeout_seconds: float = Field(default=15, gt=0)
+
     # --- Persistence ------------------------------------------------------
     database_url: str = ""
     # Required behind transaction-mode poolers (PgBouncer, Supabase :6543).
@@ -119,6 +132,19 @@ class Settings(BaseSettings):
             return [str(item).strip().rstrip("/") for item in value if str(item).strip()]
         return value
 
+    @field_validator("github_repository")
+    @classmethod
+    def _check_repository(cls, value: str) -> str:
+        value = value.strip()
+        if value and not _REPOSITORY.fullmatch(value):
+            raise ValueError("GITHUB_REPOSITORY must look like owner/name")
+        return value
+
+    @field_validator("github_api_url")
+    @classmethod
+    def _strip_api_url(cls, value: str) -> str:
+        return value.strip().rstrip("/")
+
     @field_validator("database_url")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:
@@ -133,6 +159,10 @@ class Settings(BaseSettings):
     @property
     def ai_configured(self) -> bool:
         return bool(self.groq_api_key)
+
+    @property
+    def github_export_configured(self) -> bool:
+        return bool(self.github_token and self.github_repository and self.github_export_key)
 
 
 settings = Settings()
