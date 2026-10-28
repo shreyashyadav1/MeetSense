@@ -1,3 +1,5 @@
+<p align="center"><img src="frontend/public/apple-touch-icon.png" width="96" alt="MeetSense AI app icon"></p>
+
 # MeetSense AI
 
 A full-stack AI-powered meeting assistant that captures live speech, transcribes it in real time, and generates structured meeting insights using large language models.
