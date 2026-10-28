@@ -1,0 +1,41 @@
+{
+  "meeting_id": "cascade-1on1-meilin-noah",
+  "meeting_type": "one_on_one",
+  "company": "Cascade Robotics",
+  "title": "1:1 - Mei Lin Chao & Noah Bergström",
+  "duration_minutes": 18,
+  "participants": ["Mei Lin Chao", "Noah Bergström"],
+  "transcript": [
+    {"speaker": "Noah Bergström", "text": "Update me on where things stand with Voltcore since the switch."},
+    {"speaker": "Mei Lin Chao", "text": "Samples arrived Thursday as promised. Gustavo ran the high-load stress test - it passed, but with less margin than our original supplier, about 8% headroom instead of 15%."},
+    {"speaker": "Noah Bergström", "text": "Is 8% enough margin to feel comfortable shipping, or too tight?"},
+    {"speaker": "Mei Lin Chao", "text": "I'd call it acceptable for this batch, not ideal long term. I don't want to standardize on Voltcore permanently without pushing them to improve the discharge curve, or finding a supplier with better margin."},
+    {"speaker": "Noah Bergström", "text": "Understood. Is this a this-batch-only decision, or are we stuck with Voltcore going forward?"},
+    {"speaker": "Mei Lin Chao", "text": "This batch only, for now. I'd like to keep evaluating our original supplier's next shipment timeline in parallel, and maybe also get samples from a third supplier I've heard good things about, called Ferrocell."},
+    {"speaker": "Noah Bergström", "text": "Go ahead and reach out to Ferrocell for samples. What about the pack recertification question from earlier this week?"},
+    {"speaker": "Mei Lin Chao", "text": "Certification team confirmed we do need to retest the protection circuit for the new discharge curve, but not a full pack recertification. That's about a week of testing, less than I feared."},
+    {"speaker": "Noah Bergström", "text": "Good news. Can you get that scheduled?"},
+    {"speaker": "Mei Lin Chao", "text": "Yes, I'll get it on the calendar this week."},
+    {"speaker": "Noah Bergström", "text": "One more thing - how's Gustavo doing after the bricked-units incident? I want to make sure that didn't shake his confidence too much, it was a good root cause and fix on his part."},
+    {"speaker": "Mei Lin Chao", "text": "He was pretty hard on himself initially, but the brownout test he added and the clean overnight stress run afterward seemed to help him feel better about it. I've told him it was handled well."},
+    {"speaker": "Noah Bergström", "text": "Good, let him know I said the same. Thanks Mei Lin."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "The Voltcore battery samples passed the high-load stress test but with tighter margin than the original supplier",
+      "Voltcore is being treated as a this-batch-only solution, not a permanent switch",
+      "The certification team confirmed only the protection circuit needs retesting, not a full pack recertification",
+      "Gustavo's confidence after the bricked-units incident has recovered following the brownout test and clean stress run"
+    ],
+    "action_items": [
+      {"owner": "Mei Lin Chao", "task": "Reach out to Ferrocell for battery samples as a potential alternative supplier"},
+      {"owner": "Mei Lin Chao", "task": "Schedule the protection circuit retesting this week"}
+    ],
+    "decisions": [
+      "Treat Voltcore as a this-batch-only battery supplier, not a permanent switch"
+    ],
+    "open_questions": [
+      "Can Voltcore be pushed to improve their discharge curve, or should a better-margin supplier be found instead?"
+    ]
+  }
+}
