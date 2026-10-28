@@ -35,7 +35,7 @@ export function useMeetings(): UseMeetingsResult {
       },
       (err: unknown) => {
         if (request !== latestRequest.current) return;
-        setError(getApiErrorMessage(err, { fallback: 'Failed to load meetings. Please try again.' }));
+        setError(getApiErrorMessage(err, { fallback: 'Couldn’t load your meetings. Refresh to try again.' }));
         setHasLoaded(true);
       },
     );

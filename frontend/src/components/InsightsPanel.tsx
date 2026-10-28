@@ -1,19 +1,11 @@
-import React, { useState } from 'react';
-import {
-  Loader2,
-  AlertCircle,
-  Sparkles,
-  CheckSquare,
-  Circle,
-  HelpCircle,
-  Mail,
-  Copy,
-  Check,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, Check, Copy, Loader2, RotateCw, Sparkles } from 'lucide-react';
 import { useRequest } from '../hooks/useRequest';
 import { getInsights, summarizeMeeting } from '../services/api';
 import { getApiErrorMessage, getErrorStatus, type ErrorMessages } from '../services/errors';
 import type { MeetingInsights, MeetingStatus } from '../types';
+import { formatTime } from '../utils/format';
+import './InsightsPanel.css';
 
 interface InsightsPanelProps {
   meetingId: string;
@@ -22,11 +14,12 @@ interface InsightsPanelProps {
 }
 
 const SUMMARIZE_ERRORS: ErrorMessages = {
-  fallback: 'Failed to generate insights. Please try again.',
+  fallback: 'Couldn’t generate insights. Try again in a moment.',
   byStatus: {
-    429: 'Insights can only be generated a few times per minute. Please wait a moment and try again.',
-    502: 'The AI provider failed to produce insights. Please try again in a moment.',
-    503: 'AI insights are not configured on this server.',
+    429: 'Insights can only be generated a few times per minute. Wait a moment, then try again.',
+    502: 'The AI provider failed to produce insights. Try again in a moment.',
+    503:
+      'AI insights are not configured on this server. Set GROQ_API_KEY on the backend to turn them on.',
   },
 };
 
@@ -41,26 +34,25 @@ function loadSavedInsights(meetingId: string): Promise<MeetingInsights | null> {
 interface InsightListProps {
   title: string;
   items: string[];
-  icon: React.ReactNode;
+  emptyText: string;
 }
 
-const InsightList: React.FC<InsightListProps> = ({ title, items, icon }) => (
-  <div className="insight-card">
-    <div className="insight-card__title">{title}</div>
+const InsightList: React.FC<InsightListProps> = ({ title, items, emptyText }) => (
+  <section className="insight">
+    <h3>{title}</h3>
     {items.length === 0 ? (
-      <p className="insight-card__empty">None identified</p>
+      <p className="insight__empty">{emptyText}</p>
     ) : (
-      <ul className="insight-card__list">
+      <ul className="insight__list">
         {items.map((item, i) => (
-          <li key={i}>
-            {icon}
-            <span>{item}</span>
-          </li>
+          <li key={i}>{item}</li>
         ))}
       </ul>
     )}
-  </div>
+  </section>
 );
+
+type CopyState = 'idle' | 'copied' | 'failed';
 
 export const InsightsPanel: React.FC<InsightsPanelProps> = ({
   meetingId,
@@ -71,11 +63,21 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
   const [generated, setGenerated] = useState<MeetingInsights | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<CopyState>('idle');
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    };
+  }, []);
 
   const insights = generated ?? (saved.status === 'success' ? saved.data : null);
   const error =
-    generateError ?? (saved.status === 'error' ? 'Could not load saved insights.' : null);
+    generateError ??
+    (saved.status === 'error'
+      ? 'Couldn’t load the saved insights. You can still generate new ones.'
+      : null);
   const blockedReason =
     meetingStatus !== 'ended'
       ? 'End the meeting first to generate insights.'
@@ -95,41 +97,52 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
     }
   };
 
+  const showCopyState = (state: CopyState) => {
+    setCopyState(state);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopyState('idle'), 2500);
+  };
+
   const handleCopy = () => {
-    if (!insights || !navigator.clipboard) return;
+    if (!insights) return;
+    if (!navigator.clipboard) {
+      showCopyState('failed');
+      return;
+    }
     navigator.clipboard.writeText(insights.follow_up_email).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => undefined,
+      () => showCopyState('copied'),
+      () => showCopyState('failed'),
     );
   };
 
   const errorAlert = error && (
-    <div className="alert alert--error alert--inline insights-panel__alert" role="alert">
-      <AlertCircle size={14} />
-      {error}
+    <div className="notice notice--danger" role="alert">
+      <AlertCircle size={18} aria-hidden="true" />
+      <p className="notice__body">{error}</p>
     </div>
   );
 
   if (saved.status === 'loading' && !generated) {
     return (
-      <div className="insights-panel">
-        <div className="loading-state">
-          <Loader2 size={20} className="spin" />
-          <span>Loading insights...</span>
-        </div>
+      <div className="insights-loading" role="status">
+        <span className="visually-hidden">Loading insights…</span>
+        <span className="skeleton" style={{ width: '92%' }} aria-hidden="true" />
+        <span className="skeleton" style={{ width: '78%' }} aria-hidden="true" />
+        <span className="skeleton" style={{ width: '54%' }} aria-hidden="true" />
       </div>
     );
   }
 
   if (isGenerating) {
     return (
-      <div className="insights-panel">
-        <div className="insights-generate">
-          <Loader2 size={28} className="spin insights-generate__icon insights-generate__icon--compact" />
-          <p className="insights-generate__status">Analyzing transcript with Groq AI...</p>
+      <div className="insights-progress" role="status">
+        <Loader2 size={20} className="spin" aria-hidden="true" />
+        <div>
+          <p className="insights-progress__title">Reading the transcript…</p>
+          <p className="insights-progress__text">
+            Drafting the summary, action items and follow-up email. This usually takes a few
+            seconds.
+          </p>
         </div>
       </div>
     );
@@ -137,96 +150,94 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
 
   if (!insights) {
     return (
-      <div className="insights-panel">
-        <div className="insights-generate">
-          <Sparkles size={32} className="insights-generate__icon" />
-          <p className="insights-generate__description">
-            Generate a summary, action items, decisions, and a follow-up email draft from this
-            meeting's transcript.
-          </p>
-          {errorAlert}
-          <div title={blockedReason ?? undefined}>
-            <button
-              className="btn btn--primary"
-              onClick={() => void generate(false)}
-              disabled={blockedReason !== null}
-            >
-              <Sparkles size={15} />
-              Generate AI Insights
-            </button>
-          </div>
-          {blockedReason && <p className="insights-generate__hint">{blockedReason}</p>}
+      <div className="insights-start">
+        <p className="insights-start__text">
+          Get a summary, action items, decisions, open questions and a follow-up email drafted
+          from this meeting&rsquo;s transcript.
+        </p>
+        {errorAlert}
+        <div className="insights-start__actions">
+          <button
+            type="button"
+            className="button button--primary"
+            onClick={() => void generate(false)}
+            disabled={blockedReason !== null}
+            aria-describedby={blockedReason ? 'insights-blocked' : undefined}
+          >
+            <Sparkles size={16} aria-hidden="true" />
+            Generate insights
+          </button>
+          {blockedReason && (
+            <p className="insights-start__blocked" id="insights-blocked">
+              {blockedReason}
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="insights-panel">
-      <div className="insights-grid">
-        <div className="insight-card">
-          <div className="insight-card__title">Summary</div>
-          {insights.summary ? (
-            <p className="insight-card__text">{insights.summary}</p>
-          ) : (
-            <p className="insight-card__empty">None identified</p>
-          )}
+    <div className="insights">
+      <section className="insight insight--summary">
+        <h3>Summary</h3>
+        {insights.summary ? (
+          <p>{insights.summary}</p>
+        ) : (
+          <p className="insight__empty">No summary was produced.</p>
+        )}
+      </section>
+
+      <InsightList
+        title="Action items"
+        items={insights.action_items}
+        emptyText="No action items came up."
+      />
+      <InsightList title="Decisions" items={insights.decisions} emptyText="No decisions were made." />
+      <InsightList
+        title="Open questions"
+        items={insights.questions_raised}
+        emptyText="No open questions."
+      />
+
+      <section className="insight insight--email">
+        <div className="insight__head">
+          <h3>Follow-up email</h3>
+          <button type="button" className="button button--secondary button--small" onClick={handleCopy}>
+            {copyState === 'copied' ? (
+              <>
+                <Check size={16} aria-hidden="true" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy size={16} aria-hidden="true" />
+                Copy email
+              </>
+            )}
+          </button>
         </div>
+        <div className="letter">{insights.follow_up_email}</div>
+        <p className="insight__copy-status" role="status">
+          {copyState === 'copied' && <span className="visually-hidden">Email copied to the clipboard.</span>}
+          {copyState === 'failed' && 'Couldn’t copy the email. Select the text and copy it yourself.'}
+        </p>
+      </section>
 
-        <InsightList
-          title="Action Items"
-          items={insights.action_items}
-          icon={<CheckSquare size={13} className="insight-card__icon insight-card__icon--action" />}
-        />
-        <InsightList
-          title="Decisions"
-          items={insights.decisions}
-          icon={<Circle size={8} className="insight-card__icon insight-card__icon--decision" />}
-        />
-        <InsightList
-          title="Questions Raised"
-          items={insights.questions_raised}
-          icon={<HelpCircle size={13} className="insight-card__icon insight-card__icon--question" />}
-        />
-
-        {/* Follow-up email spans the full width */}
-        <div className="insight-card email-card">
-          <div className="insight-card__title insight-card__title--with-icon">
-            <Mail size={12} />
-            Follow-up Email
-          </div>
-          <div className="email-body">
-            <button
-              className="btn btn--ghost btn--sm copy-btn"
-              onClick={handleCopy}
-              title="Copy to clipboard"
-            >
-              {copied ? (
-                <>
-                  <Check size={12} />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy size={12} />
-                  Copy
-                </>
-              )}
-            </button>
-            {insights.follow_up_email}
-          </div>
-        </div>
-      </div>
-
-      <div className="insights-panel__actions">
+      <div className="insights__footer">
+        <p className="insights__generated">
+          Generated at{' '}
+          <time dateTime={insights.generated_at}>{formatTime(insights.generated_at)}</time>
+        </p>
         {errorAlert}
         <button
-          className="btn btn--ghost btn--sm"
+          type="button"
+          className="button button--secondary button--small"
           onClick={() => void generate(true)}
           disabled={blockedReason !== null}
           title={blockedReason ?? 'Generate the insights again from the current transcript'}
         >
-          <Sparkles size={13} />
+          <RotateCw size={16} aria-hidden="true" />
           Regenerate
         </button>
       </div>

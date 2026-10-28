@@ -1,14 +1,17 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, MessageSquare, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { Layout } from '../components/Layout';
-import { TranscriptPanel } from '../components/TranscriptPanel';
-import { MeetingStatusBadge } from '../components/StatusBadge';
+import React, { useMemo } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { InsightsPanel } from '../components/InsightsPanel';
+import { Layout } from '../components/Layout';
+import { SpeakerShare } from '../components/SpeakerShare';
+import { TranscriptPanel } from '../components/TranscriptPanel';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useRequest } from '../hooks/useRequest';
 import { getMeeting, getTranscript } from '../services/api';
 import { getApiErrorMessage } from '../services/errors';
-import { formatDateTime, formatDuration } from '../utils/format';
+import { formatDuration, formatLongDateTime } from '../utils/format';
+import { summarizeSpeakers } from '../utils/speakers';
+import './MeetingDetails.css';
 
 const loadMeetingDetails = (meetingId: string) =>
   Promise.all([getMeeting(meetingId), getTranscript(meetingId)]);
@@ -20,15 +23,17 @@ export const MeetingDetails: React.FC = () => {
 };
 
 const MeetingDetailsView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
-  const navigate = useNavigate();
   const details = useRequest(meetingId, loadMeetingDetails);
+  const segments = details.status === 'success' ? details.data[1] : null;
+  const speakers = useMemo(() => (segments ? summarizeSpeakers(segments) : []), [segments]);
+  useDocumentTitle(details.status === 'success' ? details.data[0].title : 'Meeting');
 
   if (details.status === 'loading') {
     return (
       <Layout>
-        <div className="loading-state loading-state--page">
-          <Loader2 size={32} className="spin" />
-          <span>Loading meeting details...</span>
+        <div className="page-state page-state--loading" role="status">
+          <Loader2 size={20} className="spin" aria-hidden="true" />
+          Loading the meeting…
         </div>
       </Layout>
     );
@@ -37,83 +42,89 @@ const MeetingDetailsView: React.FC<{ meetingId: string }> = ({ meetingId }) => {
   if (details.status === 'error') {
     return (
       <Layout>
-        <div className="error-state">
-          <AlertCircle size={32} />
-          <h2>Could not load meeting</h2>
+        <div className="page-state">
+          <h1>Couldn’t open this meeting</h1>
           <p>
             {getApiErrorMessage(details.error, {
-              fallback: 'Could not load meeting details. Please try again.',
-              byStatus: { 404: 'This meeting does not exist.' },
+              fallback: 'The meeting didn’t load. Check your connection and try again.',
+              byStatus: { 404: 'This meeting doesn’t exist. It may have been opened from an old link.' },
             })}
           </p>
-          <button className="btn btn--primary" onClick={() => navigate('/')}>
-            Back to Dashboard
-          </button>
+          <Link className="button button--primary" to="/">
+            Back to meetings
+          </Link>
         </div>
       </Layout>
     );
   }
 
-  const [meeting, segments] = details.data;
-  const formattedDate = formatDateTime(meeting.started_at, 'EEEE, MMMM d, yyyy · h:mm a');
-  const duration = formatDuration(meeting.started_at, meeting.ended_at);
+  const [meeting, transcript] = details.data;
+  const active = meeting.status === 'active';
 
   return (
-    <Layout>
-      <div className="meeting-details">
-        {/* Back button */}
-        <button className="back-btn" onClick={() => navigate('/')}>
-          <ArrowLeft size={16} />
-          Back to Dashboard
-        </button>
-
-        {/* Meeting header */}
-        <div className="meeting-details__header">
-          <div className="meeting-details__title-row">
-            <h1 className="meeting-details__title">{meeting.title}</h1>
-            <MeetingStatusBadge status={meeting.status} />
-          </div>
-          <div className="meeting-details__meta">
-            <span className="meta-item">
-              <Calendar size={14} />
-              {formattedDate}
-            </span>
-            <span className="meta-item">
-              <Clock size={14} />
-              {duration}
-            </span>
-            <span className="meta-item">
-              <MessageSquare size={14} />
-              {segments.length} {segments.length === 1 ? 'segment' : 'segments'}
-            </span>
-          </div>
+    <Layout activeMeetingId={active ? meeting.id : undefined}>
+      <div className="record">
+        <div className="record__top">
+          <Link className="back-link" to="/">
+            <ArrowLeft size={16} aria-hidden="true" />
+            All meetings
+          </Link>
+          <h1>{meeting.title}</h1>
         </div>
 
-        <div className="meeting-details__content">
-          {/* Transcript */}
-          <div className="meeting-details__transcript-section">
-            <h2 className="section-title">Transcript</h2>
-            <div className="meeting-details__transcript-wrapper">
-              <TranscriptPanel segments={segments} isLive={false} />
+        <aside className="record__facts" aria-label="About this meeting">
+          <dl className="facts">
+            <div className="facts__item">
+              <dt>Started</dt>
+              <dd>
+                <time dateTime={meeting.started_at}>{formatLongDateTime(meeting.started_at)}</time>
+              </dd>
             </div>
-          </div>
+            <div className="facts__item">
+              <dt>Length</dt>
+              <dd>{active ? 'Still in progress' : formatDuration(meeting.started_at, meeting.ended_at)}</dd>
+            </div>
+            <div className="facts__item">
+              <dt>Transcript</dt>
+              <dd>
+                {transcript.length} {transcript.length === 1 ? 'line' : 'lines'}
+              </dd>
+            </div>
+          </dl>
 
-          {/* AI Insights */}
-          <aside className="meeting-details__insights">
-            <div className="insights-card">
-              <div className="insights-card__header">
-                <Sparkles size={18} />
-                <h3 className="insights-card__title">AI Insights</h3>
-              </div>
-              <div className="insights-card__body">
-                <InsightsPanel
-                  meetingId={meeting.id}
-                  meetingStatus={meeting.status}
-                  hasTranscript={segments.length > 0}
-                />
-              </div>
-            </div>
-          </aside>
+          {speakers.length > 0 && (
+            <section className="record__speakers" aria-labelledby="record-speakers">
+              <h2 className="rail-label" id="record-speakers">
+                Speakers
+              </h2>
+              <SpeakerShare speakers={speakers} />
+            </section>
+          )}
+
+          {active && (
+            <Link className="button button--primary button--block" to={`/meeting/${meeting.id}/live`}>
+              Open the live meeting
+            </Link>
+          )}
+        </aside>
+
+        <div className="record__main">
+          <section className="record__section" aria-labelledby="insights-heading">
+            <h2 id="insights-heading">Insights</h2>
+            <InsightsPanel
+              meetingId={meeting.id}
+              meetingStatus={meeting.status}
+              hasTranscript={transcript.length > 0}
+            />
+          </section>
+
+          <section className="record__section" aria-labelledby="transcript-heading">
+            <h2 id="transcript-heading">Transcript</h2>
+            <TranscriptPanel
+              segments={transcript}
+              emptyMessage="Nothing was transcribed in this meeting."
+            />
+          </section>
         </div>
       </div>
     </Layout>

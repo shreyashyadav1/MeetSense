@@ -36,11 +36,11 @@ async function openNewMeetingForm() {
     </MemoryRouter>,
   );
   await screen.findByText('No meetings yet');
-  await user.click(screen.getByRole('button', { name: 'New Meeting' }));
+  await user.click(screen.getByRole('button', { name: 'New meeting' }));
   return {
     user,
-    input: screen.getByLabelText('Meeting Title'),
-    submit: screen.getByRole('button', { name: 'Start Meeting' }),
+    input: screen.getByLabelText('Meeting title'),
+    submit: screen.getByRole('button', { name: 'Start meeting' }),
   };
 }
 
@@ -71,7 +71,7 @@ describe('New meeting form', () => {
   });
 
   it.each([
-    [apiError(429, 'Rate limit exceeded'), "You're creating meetings too quickly"],
+    [apiError(429, 'Rate limit exceeded'), 'You’re creating meetings too quickly'],
     [apiError(422, 'Title must not be blank.'), 'Please check your input: Title must not be blank.'],
     [apiError(503), 'temporarily unavailable'],
   ])('explains failures (%#)', async (error, message) => {
