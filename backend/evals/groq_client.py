@@ -4,8 +4,9 @@
 returns ``MeetingInsights`` - the schema stored in Postgres and served over
 the API - which has no room for token usage or per-call latency. Rather than
 grow that schema for an offline tool, this mirrors production's prompt and
-one-retry-on-bad-JSON policy closely enough to evaluate what a user would
-actually see, while returning the numbers the harness needs. The prompts are
+one-retry-on-bad-JSON policy (including Groq's own ``json_validate_failed``
+rejections) closely enough to evaluate what a user would actually see, while
+returning the numbers the harness needs. The prompts are
 reused directly; the request options (model, temperature, token limit,
 reasoning effort) are repeated here, so ``tests/test_evals_groq_client.py``
 compares them against ``generate_insights`` and fails if the two diverge.
@@ -21,7 +22,12 @@ from groq.types.chat import ChatCompletionMessageParam
 from pydantic import ValidationError
 
 from app.core.config import settings
-from app.services.ai_service import CORRECTION_PROMPT, SYSTEM_PROMPT, _InsightsContent
+from app.services.ai_service import (
+    CORRECTION_PROMPT,
+    SYSTEM_PROMPT,
+    _InsightsContent,
+    _is_json_validation_failure,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,14 +90,21 @@ async def _complete(
     # Blank means the model has no reasoning support and would reject the parameter.
     effort = settings.groq_reasoning_effort
     reasoning = {"reasoning_effort": effort} if effort else {}
-    response = await client.chat.completions.create(
-        model=settings.groq_model,
-        messages=messages,
-        temperature=settings.groq_temperature,
-        max_tokens=settings.groq_max_tokens,
-        response_format={"type": "json_object"},
-        **reasoning,
-    )
+    try:
+        response = await client.chat.completions.create(
+            model=settings.groq_model,
+            messages=messages,
+            temperature=settings.groq_temperature,
+            max_tokens=settings.groq_max_tokens,
+            response_format={"type": "json_object"},
+            **reasoning,
+        )
+    except groq.BadRequestError as error:
+        # Production treats Groq's json_validate_failed like a bad reply and
+        # retries it; the error carries no token usage.
+        if _is_json_validation_failure(error):
+            return None, (0, 0)
+        raise
     usage = getattr(response, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
     completion_tokens = getattr(usage, "completion_tokens", 0) or 0
@@ -101,7 +114,7 @@ async def _complete(
 
 def _parse(reply: str | None) -> tuple[_InsightsContent | None, str | None]:
     if not reply:
-        return None, "empty reply"
+        return None, "empty reply, or Groq rejected the JSON it generated"
     try:
         return _InsightsContent.model_validate_json(reply), None
     except ValidationError as error:

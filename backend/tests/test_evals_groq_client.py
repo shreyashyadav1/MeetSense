@@ -3,11 +3,12 @@ from __future__ import annotations
 from typing import Any
 
 import groq
+import httpx
 import pytest
 
 from app.core.config import settings
 from app.models.schemas import TranscriptSegment
-from app.services.ai_service import generate_insights
+from app.services.ai_service import CORRECTION_PROMPT, generate_insights
 from evals.groq_client import request_insights
 from tests.fakes import GROQ_REQUEST, VALID_INSIGHTS, FakeGroq
 
@@ -76,6 +77,57 @@ async def test_bad_json_is_retried_once_and_tokens_from_both_calls_are_summed() 
     # Both calls' prompt tokens count, not just the last one.
     assert result.prompt_tokens == first_tokens + retry_tokens
     assert result.prompt_tokens > first_tokens
+
+
+def json_validation_error() -> groq.BadRequestError:
+    return groq.BadRequestError(
+        "json_validate_failed",
+        response=httpx.Response(400, request=GROQ_REQUEST),
+        body={"error": {"code": "json_validate_failed", "message": "Failed to generate JSON"}},
+    )
+
+
+async def test_groq_json_rejection_is_retried_like_production() -> None:
+    """generate_insights retries a json_validate_failed 400; the eval must too."""
+    FakeGroq.reset(json_validation_error(), VALID_INSIGHTS)
+    client = FakeGroq()
+
+    result = await request_insights(client, "Standup", "[00:00] Alice: hi")
+
+    assert result.content is not None
+    assert result.retried is True
+    assert result.error is None
+    assert len(client.requests) == 2
+    assert client.requests[1]["messages"][-1]["content"] == CORRECTION_PROMPT
+
+
+async def test_groq_json_rejection_twice_is_reported_without_raising() -> None:
+    FakeGroq.reset(json_validation_error(), json_validation_error())
+    client = FakeGroq()
+
+    result = await request_insights(client, "Standup", "[00:00] Alice: hi")
+
+    assert result.content is None
+    assert result.retried is True
+    assert result.error is not None
+
+
+async def test_other_bad_requests_are_not_retried() -> None:
+    FakeGroq.reset(
+        groq.BadRequestError(
+            "context_length_exceeded",
+            response=httpx.Response(400, request=GROQ_REQUEST),
+            body={"error": {"code": "context_length_exceeded"}},
+        )
+    )
+    client = FakeGroq()
+
+    result = await request_insights(client, "Standup", "[00:00] Alice: hi")
+
+    assert result.content is None
+    assert result.retried is False
+    assert "context_length_exceeded" in (result.error or "")
+    assert len(client.requests) == 1
 
 
 async def test_second_bad_reply_returns_no_content_but_still_reports_usage() -> None:

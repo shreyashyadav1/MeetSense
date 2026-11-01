@@ -51,6 +51,8 @@ class FixtureScore:
     duration_minutes: float
     retried: bool
     error: str | None
+    # What the model returned, kept in the report so misses can be read by eye.
+    predicted: dict[str, list[str]] | None = None
 
 
 def load_fixtures(paths: list[Path] | None = None) -> list[dict]:
@@ -102,6 +104,13 @@ async def evaluate_fixture(client: AsyncGroq, fixture: dict) -> FixtureScore:
         duration_minutes=fixture["duration_minutes"],
         retried=result.retried,
         error=result.error,
+        predicted={
+            "action_items": predicted_actions,
+            "decisions": predicted_decisions,
+            "questions_raised": predicted_questions,
+        }
+        if content
+        else None,
     )
 
 
@@ -146,6 +155,7 @@ def summarize(scores: list[FixtureScore]) -> dict:
                 "completion_tokens": s.completion_tokens,
                 "retried": s.retried,
                 "error": s.error,
+                "predicted": s.predicted,
             }
             for s in scores
         ],

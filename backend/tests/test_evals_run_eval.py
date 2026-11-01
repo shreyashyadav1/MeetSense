@@ -72,6 +72,8 @@ async def test_evaluate_fixture_scores_a_good_reply() -> None:
     assert score.prompt_tokens > 0
     assert score.completion_tokens > 0
     assert score.error is None
+    assert score.predicted is not None
+    assert score.predicted["action_items"] == REPLY["action_items"]
 
 
 async def test_evaluate_fixture_handles_an_unusable_reply() -> None:
@@ -86,6 +88,7 @@ async def test_evaluate_fixture_handles_an_unusable_reply() -> None:
     assert score.decisions.recall == 0.0
     assert score.summary_coverage == CoverageResult(0, 1)
     assert score.error is not None
+    assert score.predicted is None
 
 
 # --- summarize() aggregation ---------------------------------------------------------
