@@ -26,6 +26,8 @@ scoring and orchestration logic is unit-tested with a fake model in
 
 Each run prints a summary and writes the full per-fixture report as JSON to
 `evals/results/` (gitignored - regenerate instead of committing).
+Measured runs, with their commit and caveats, are written up in
+[`RESULTS.md`](RESULTS.md).
 `--price-per-1m-prompt` / `--price-per-1m-completion` add an estimated
 dollar cost per meeting-hour if you pass both; there's no built-in default,
 since Groq's pricing changes and a stale hardcoded number would be worse
