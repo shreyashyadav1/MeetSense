@@ -1,0 +1,46 @@
+{
+  "meeting_id": "cascade-robotics-incident-firmware-bricked",
+  "meeting_type": "incident_review",
+  "company": "Cascade Robotics",
+  "title": "Cascade Robotics Incident Review - Firmware Update Bricked Test Units",
+  "duration_minutes": 24,
+  "participants": ["Noah Bergström", "Mei Lin Chao", "Gustavo Ferreira"],
+  "transcript": [
+    {"speaker": "Noah Bergström", "text": "Let's go through what happened with the firmware update that bricked two test units yesterday."},
+    {"speaker": "Mei Lin Chao", "text": "The update included a bootloader change. On two of our five test units, the update process lost power partway through - a loose battery connector - and because the new bootloader doesn't have a fallback partition, those two units are now unresponsive."},
+    {"speaker": "Gustavo Ferreira", "text": "That's on me - I removed the dual-partition fallback in this update to save flash space, without fully considering what happens if power is lost mid-flash. That was a mistake."},
+    {"speaker": "Noah Bergström", "text": "Can the two bricked units be recovered?"},
+    {"speaker": "Gustavo Ferreira", "text": "Only with a hardware JTAG connection, not over the air. I can recover them in the lab, it'll take about half a day for both."},
+    {"speaker": "Mei Lin Chao", "text": "I'll also get the loose battery connector issue looked at separately - that's a hardware assembly problem independent of the firmware bug, and it's concerning on its own."},
+    {"speaker": "Noah Bergström", "text": "Agreed, two separate problems. What's the fix so this can't happen again?"},
+    {"speaker": "Gustavo Ferreira", "text": "Bring back the dual-partition fallback so a failed flash always has a known-good partition to boot from. That costs some flash space, but bricking a unit is much worse. I'll restore that this week."},
+    {"speaker": "Noah Bergström", "text": "Agreed, that's not a tradeoff we should make lightly again. Let's make it a rule - no bootloader changes ship without a fallback partition, full stop."},
+    {"speaker": "Mei Lin Chao", "text": "I'll add a checklist item for firmware releases to confirm fallback partition is present."},
+    {"speaker": "Gustavo Ferreira", "text": "And I'll add a brownout test to our release process - simulate power loss at several points during flashing to see how the unit recovers."},
+    {"speaker": "Noah Bergström", "text": "Good. One open question I don't have an answer to - how many units in the field, if any, could be affected by this same update? Do we know how many customers already received it?"},
+    {"speaker": "Mei Lin Chao", "text": "I need to check with ops on the rollout list - I don't have that number in front of me."},
+    {"speaker": "Noah Bergström", "text": "Let's get that answer before end of day given the severity."},
+    {"speaker": "Mei Lin Chao", "text": "Understood, I'll find out and report back today."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Removing the dual-partition fallback to save flash space caused two test units to brick when power was lost mid-update",
+      "The two bricked units can be recovered in the lab with a JTAG connection, about half a day",
+      "The dual-partition fallback will be restored, and a rule is being set that no bootloader change ships without one",
+      "It's unclear how many field units, if any, already received the risky update"
+    ],
+    "action_items": [
+      {"owner": "Gustavo Ferreira", "task": "Recover the two bricked test units using a JTAG connection"},
+      {"owner": "Gustavo Ferreira", "task": "Restore the dual-partition bootloader fallback this week"},
+      {"owner": "Gustavo Ferreira", "task": "Add a brownout test simulating power loss during flashing to the release process"},
+      {"owner": "Mei Lin Chao", "task": "Add a release checklist item confirming the fallback partition is present"},
+      {"owner": "Mei Lin Chao", "task": "Find out how many field units already received the risky firmware update and report back today"}
+    ],
+    "decisions": [
+      "No bootloader change ships without a dual-partition fallback, going forward"
+    ],
+    "open_questions": [
+      "How many units in the field, if any, already received the update that caused the bricking?"
+    ]
+  }
+}

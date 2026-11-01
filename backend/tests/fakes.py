@@ -51,7 +51,14 @@ class FakeGroq:
         if isinstance(reply, Exception):
             raise reply
         message = SimpleNamespace(content=reply)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+        # A deterministic chars/4 stand-in for token counts (real usage isn't
+        # inspected by ai_service, only by the eval harness's own tests).
+        prompt_chars = sum(len(m.get("content", "")) for m in request.get("messages", []))
+        usage = SimpleNamespace(
+            prompt_tokens=prompt_chars // 4,
+            completion_tokens=len(reply) // 4 if isinstance(reply, str) else 0,
+        )
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
 
     async def close(self) -> None:
         self.closed = True

@@ -1,0 +1,39 @@
+{
+  "meeting_id": "cascade-robotics-standup-02",
+  "meeting_type": "standup",
+  "company": "Cascade Robotics",
+  "title": "Cascade Robotics Standup - Battery Supplier Follow-up",
+  "duration_minutes": 9,
+  "participants": ["Mei Lin Chao", "Gustavo Ferreira", "Hannah Whitfield"],
+  "transcript": [
+    {"speaker": "Mei Lin Chao", "text": "Update on the battery supplier decision from earlier this week - procurement couldn't expedite, so we're switching to the backup supplier, Voltcore, for this batch."},
+    {"speaker": "Hannah Whitfield", "text": "Confirmed, I placed the order with Voltcore this morning. Their cells are rated for slightly lower peak discharge, so we should retest the high-load motor scenario once samples arrive Thursday."},
+    {"speaker": "Gustavo Ferreira", "text": "I'll run the high-load stress test as soon as samples land."},
+    {"speaker": "Mei Lin Chao", "text": "Good. Gustavo, how did the firmware patch hold up overnight?"},
+    {"speaker": "Gustavo Ferreira", "text": "Clean run - eighteen hours on the stress rig with no jerking. I'm confident in the fix."},
+    {"speaker": "Mei Lin Chao", "text": "Great, let's merge that patch into the release branch today."},
+    {"speaker": "Gustavo Ferreira", "text": "Will do."},
+    {"speaker": "Hannah Whitfield", "text": "One thing to flag - with a new cell chemistry, we might need to redo battery pack certification, not just cell-level. I heard back from the certification team."},
+    {"speaker": "Mei Lin Chao", "text": "And? What did they say?"},
+    {"speaker": "Hannah Whitfield", "text": "They said it depends on whether the pack's protection circuit needs retuning for the new discharge curve - they're checking and will get back to us by Monday."},
+    {"speaker": "Mei Lin Chao", "text": "Okay, let's not assume either way until we hear back. Thanks both."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Switched to backup supplier Voltcore after procurement couldn't expedite the original shipment",
+      "The overnight firmware stress test passed cleanly after the race condition fix",
+      "The firmware patch will be merged into the release branch",
+      "Whether full battery pack recertification is needed is still pending word from the certification team"
+    ],
+    "action_items": [
+      {"owner": "Hannah Whitfield", "task": "Run a high-load motor stress test once the Voltcore battery samples arrive Thursday"},
+      {"owner": "Gustavo Ferreira", "task": "Merge the firmware race-condition patch into the release branch"}
+    ],
+    "decisions": [
+      "Switch to Voltcore as the backup battery supplier for this batch"
+    ],
+    "open_questions": [
+      "Will the new battery cell chemistry require full pack recertification, or just cell-level testing?"
+    ]
+  }
+}

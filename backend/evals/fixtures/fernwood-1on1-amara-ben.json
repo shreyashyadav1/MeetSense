@@ -1,0 +1,44 @@
+{
+  "meeting_id": "fernwood-1on1-amara-ben",
+  "meeting_type": "one_on_one",
+  "company": "Fernwood Health",
+  "title": "1:1 - Amara Okafor & Ben Holloway",
+  "duration_minutes": 20,
+  "participants": ["Amara Okafor", "Ben Holloway"],
+  "transcript": [
+    {"speaker": "Ben Holloway", "text": "I wanted to check in specifically about on-call load - I noticed Ravi's been paged a lot the last few weeks."},
+    {"speaker": "Amara Okafor", "text": "Yeah, he's mentioned it's wearing on him. Between the database incident, a couple of noisy alerts that turn out to be false positives, and just being one of only three people in the rotation, he's had a rough stretch."},
+    {"speaker": "Ben Holloway", "text": "How many false-positive pages would you estimate in the last month?"},
+    {"speaker": "Amara Okafor", "text": "At least six that I know of, mostly from a disk-usage alert that's poorly tuned - it fires at 80% but our disks regularly sit at 82-85% under normal operation with no actual problem."},
+    {"speaker": "Ben Holloway", "text": "That sounds like an easy fix - can we just retune the threshold?"},
+    {"speaker": "Amara Okafor", "text": "Yes, I'll raise it to 92% and add a slower-burn secondary alert instead of one noisy threshold. I should have that done this week."},
+    {"speaker": "Ben Holloway", "text": "Good. Beyond alert tuning, do we need a fourth person in the on-call rotation?"},
+    {"speaker": "Amara Okafor", "text": "I think so, longer term. Liam's expressed some interest in joining the rotation, but he'd need ramp-up time and a proper handoff of runbooks first."},
+    {"speaker": "Ben Holloway", "text": "Let's start that ramp-up now rather than waiting. Can you put together a plan for getting Liam onboarded to on-call?"},
+    {"speaker": "Amara Okafor", "text": "Yes, I'll draft an onboarding plan and timeline by next week."},
+    {"speaker": "Ben Holloway", "text": "In the meantime, should we lighten Ravi's load specifically, even before Liam's ready?"},
+    {"speaker": "Amara Okafor", "text": "I could swap some of his upcoming shifts with mine for the next couple weeks while we fix the alert noise."},
+    {"speaker": "Ben Holloway", "text": "Let's do that. Also - is this something we should talk to Ravi about directly, or would that feel like we're making a bigger deal of it than he wants?"},
+    {"speaker": "Amara Okafor", "text": "I think a direct, low-key conversation would help, so it doesn't seem like we're ignoring it. I'll talk to him this week."},
+    {"speaker": "Ben Holloway", "text": "Thanks Amara, appreciate you flagging this before it became a bigger problem."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "On-call burnout is a growing concern, driven partly by a poorly tuned disk-usage alert causing frequent false positives",
+      "The disk-usage alert threshold will be raised and a secondary alert added to reduce noise",
+      "Liam will begin ramping up to join the on-call rotation as a fourth person",
+      "Amara will temporarily take some of Ravi's shifts while the alert noise is fixed"
+    ],
+    "action_items": [
+      {"owner": "Amara Okafor", "task": "Retune the disk-usage alert threshold and add a slower-burn secondary alert this week"},
+      {"owner": "Amara Okafor", "task": "Draft an onboarding plan and timeline for Liam joining the on-call rotation"},
+      {"owner": "Amara Okafor", "task": "Swap some of Ravi's upcoming on-call shifts to lighten his load"},
+      {"owner": "Amara Okafor", "task": "Talk to Ravi directly this week about his on-call load"}
+    ],
+    "decisions": [
+      "Start ramping Liam up to join the on-call rotation as a fourth person now, rather than waiting",
+      "Temporarily shift some of Ravi's on-call shifts to Amara while alert noise is being fixed"
+    ],
+    "open_questions": []
+  }
+}

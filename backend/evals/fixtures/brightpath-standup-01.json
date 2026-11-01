@@ -1,0 +1,40 @@
+{
+  "meeting_id": "brightpath-standup-01",
+  "meeting_type": "standup",
+  "company": "BrightPath Learning",
+  "title": "BrightPath Standup - Course Builder Drag and Drop",
+  "duration_minutes": 10,
+  "participants": ["Grace Eze", "Oliver Bennett", "Fatima Siddiqui"],
+  "transcript": [
+    {"speaker": "Grace Eze", "text": "Morning team. Oliver, where are we on the drag-and-drop course builder?"},
+    {"speaker": "Oliver Bennett", "text": "Reordering lessons within a module works now. Cross-module drag is trickier - the state management gets messy when a lesson moves to a different module's progress tracking."},
+    {"speaker": "Grace Eze", "text": "How much longer for cross-module drag?"},
+    {"speaker": "Oliver Bennett", "text": "Probably two more days if nothing else comes up."},
+    {"speaker": "Grace Eze", "text": "Okay, let's timebox it - if it's not working by Thursday, we ship with same-module reordering only for this release and follow up with cross-module in the next sprint."},
+    {"speaker": "Fatima Siddiqui", "text": "That works for me design-wise, the drag handle looks the same either way."},
+    {"speaker": "Grace Eze", "text": "Fatima, how are the empty-state illustrations coming along?"},
+    {"speaker": "Fatima Siddiqui", "text": "Done, I uploaded three variants to the shared drive this morning. I need someone to pick one before Friday's release."},
+    {"speaker": "Grace Eze", "text": "I'll review them today and pick one by end of day."},
+    {"speaker": "Oliver Bennett", "text": "One thing I want to flag - should we show a confirmation dialog before a drag-and-drop reorder saves, or save instantly like it does now? A couple of beta testers accidentally reordered lessons and didn't notice."},
+    {"speaker": "Grace Eze", "text": "Good catch, I don't want to add friction with a dialog on every drag, but let's think about an undo toast instead. Let me check with Fatima on what that would look like."},
+    {"speaker": "Grace Eze", "text": "Alright, thanks everyone."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Same-module lesson reordering is working; cross-module drag is more complex",
+      "Cross-module drag will be timeboxed to Thursday or deferred to the next sprint",
+      "Empty-state illustrations are done and awaiting a final pick",
+      "Beta testers accidentally reordered lessons without noticing, raising a UX concern"
+    ],
+    "action_items": [
+      {"owner": "Grace Eze", "task": "Review the empty-state illustration variants and pick one by end of day"},
+      {"owner": "Oliver Bennett", "task": "Continue work on cross-module drag and drop, timeboxed to Thursday"}
+    ],
+    "decisions": [
+      "Ship with same-module reordering only if cross-module drag isn't ready by Thursday, and follow up next sprint"
+    ],
+    "open_questions": [
+      "Should reordering show an undo toast instead of saving instantly, to avoid accidental reorders?"
+    ]
+  }
+}

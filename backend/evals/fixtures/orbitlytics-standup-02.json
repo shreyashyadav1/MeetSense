@@ -1,0 +1,43 @@
+{
+  "meeting_id": "orbitlytics-standup-02",
+  "meeting_type": "standup",
+  "company": "Orbitlytics",
+  "title": "Orbitlytics Standup - v2 Onboarding Beta Prep",
+  "duration_minutes": 11,
+  "participants": ["Priya Nandakumar", "Jae-won Lee", "Sofia Marchetti", "Tomasz Kowalski"],
+  "transcript": [
+    {"speaker": "Priya Nandakumar", "text": "Quick standup - beta launch for the v2 onboarding flow is Friday. Where do we stand?"},
+    {"speaker": "Sofia Marchetti", "text": "Frontend's done except one thing - the progress bar jumps from 40% to 100% because we're missing an intermediate step for email verification. I'll add that step today."},
+    {"speaker": "Jae-won Lee", "text": "Backend's ready. Verification emails send within a couple seconds in my testing."},
+    {"speaker": "Priya Nandakumar", "text": "Tomasz, test coverage?"},
+    {"speaker": "Tomasz Kowalski", "text": "I ran the full onboarding suite twice - both green. I did find one edge case: if someone closes the tab right after verifying their email but before the welcome screen loads, they get stuck in a weird half-onboarded state."},
+    {"speaker": "Priya Nandakumar", "text": "How common is that likely to be?"},
+    {"speaker": "Tomasz Kowalski", "text": "Hard to say, but it's a real bug, not just a test artifact. I'd rate it medium severity."},
+    {"speaker": "Jae-won Lee", "text": "I can add a redirect check on login that finishes onboarding automatically if it detects that state. Give me until tomorrow morning."},
+    {"speaker": "Priya Nandakumar", "text": "Let's do that - I don't want to slip Friday over it, but let's not ship with a known dead-end either."},
+    {"speaker": "Sofia Marchetti", "text": "Sounds good, I'll retest once Jae-won's fix lands."},
+    {"speaker": "Priya Nandakumar", "text": "One open question for the group - do we soft-launch to 10% of new signups Friday, or go to everyone at once?"},
+    {"speaker": "Tomasz Kowalski", "text": "I'd lean soft launch given we just found a new edge case this morning."},
+    {"speaker": "Priya Nandakumar", "text": "Fair. Let's decide tomorrow after Jae-won's fix is in and retested, not today."},
+    {"speaker": "Priya Nandakumar", "text": "Thanks everyone, good progress."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Frontend is adding a missing progress step for email verification",
+      "Backend onboarding is functionally complete",
+      "QA found a medium-severity bug where closing the tab after verification leaves users half-onboarded",
+      "A fix and retest are planned before Friday's beta launch"
+    ],
+    "action_items": [
+      {"owner": "Sofia Marchetti", "task": "Add the missing progress bar step for email verification"},
+      {"owner": "Jae-won Lee", "task": "Add a redirect check on login to auto-finish onboarding for stuck users"},
+      {"owner": "Sofia Marchetti", "task": "Retest onboarding once the redirect fix lands"}
+    ],
+    "decisions": [
+      "Decide tomorrow, after the fix is retested, whether to soft-launch to 10% of signups or launch to everyone"
+    ],
+    "open_questions": [
+      "Should Friday's beta launch go to 10% of new signups or to everyone at once?"
+    ]
+  }
+}

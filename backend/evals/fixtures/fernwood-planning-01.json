@@ -1,0 +1,44 @@
+{
+  "meeting_id": "fernwood-planning-01",
+  "meeting_type": "planning",
+  "company": "Fernwood Health",
+  "title": "Fernwood Health Sprint Planning - Patient Portal Redesign",
+  "duration_minutes": 25,
+  "participants": ["Ines Alvarez", "Liam Fitzgerald", "Amara Okafor", "Ben Holloway"],
+  "transcript": [
+    {"speaker": "Ines Alvarez", "text": "This sprint we're kicking off the patient portal redesign. Ben, you wanted to weigh in on scope before we commit."},
+    {"speaker": "Ben Holloway", "text": "Right - the main ask from support is that patients can't easily find past lab results. Whatever we do this sprint, that needs to be in scope."},
+    {"speaker": "Ines Alvarez", "text": "Agreed, that's item one on my list. The redesign also includes a new appointment scheduling widget, but that could slip to next sprint if needed."},
+    {"speaker": "Liam Fitzgerald", "text": "From a backend angle, surfacing lab results faster means we need a new indexed endpoint - the current query joins five tables and takes almost four seconds for patients with a long history."},
+    {"speaker": "Ines Alvarez", "text": "Can you get that endpoint done this sprint?"},
+    {"speaker": "Liam Fitzgerald", "text": "Yes, I'll have the indexed lab-results endpoint ready by Wednesday next week."},
+    {"speaker": "Amara Okafor", "text": "I want to flag a risk - that table gets heavy write traffic from the lab integration nightly batch. Adding an index could slow those writes down. I'd like to test it in staging under realistic load before it hits production."},
+    {"speaker": "Ines Alvarez", "text": "Good call. Liam, once it's built, can you and Amara run a load test together?"},
+    {"speaker": "Liam Fitzgerald", "text": "Sure, we can do that Thursday."},
+    {"speaker": "Ines Alvarez", "text": "Let's make the appointment scheduling widget a stretch goal - if the lab results work finishes early, we start on it, but it's not this sprint's commitment."},
+    {"speaker": "Ben Holloway", "text": "Agreed, don't let it distract from the core scope."},
+    {"speaker": "Ines Alvarez", "text": "One open question I don't have an answer to yet - should lab results older than two years be paginated separately, or all loaded at once? I need to check with clinical on whether providers ever need to see that far back quickly."},
+    {"speaker": "Ben Holloway", "text": "I don't know either, good to flag. Loop in clinical this week."},
+    {"speaker": "Ines Alvarez", "text": "Will do. Thanks everyone."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "This sprint's core commitment is faster access to past lab results in the patient portal",
+      "A new indexed lab-results endpoint is needed to replace a slow five-table join",
+      "The nightly lab integration batch's write performance needs testing before the index goes to production",
+      "The appointment scheduling widget is a stretch goal, not a firm commitment, this sprint"
+    ],
+    "action_items": [
+      {"owner": "Liam Fitzgerald", "task": "Build the indexed lab-results endpoint by Wednesday next week"},
+      {"owner": "Liam Fitzgerald", "task": "Run a load test of the new index against the nightly batch with Amara on Thursday"},
+      {"owner": "Amara Okafor", "task": "Run a load test of the new index against the nightly batch with Liam on Thursday"},
+      {"owner": "Ines Alvarez", "task": "Loop in the clinical team this week on whether old lab results need separate pagination"}
+    ],
+    "decisions": [
+      "Make the appointment scheduling widget a stretch goal rather than a firm sprint commitment"
+    ],
+    "open_questions": [
+      "Should lab results older than two years be paginated separately, or all loaded at once?"
+    ]
+  }
+}

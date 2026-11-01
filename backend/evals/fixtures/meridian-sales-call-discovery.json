@@ -1,0 +1,50 @@
+{
+  "meeting_id": "meridian-sales-call-discovery",
+  "meeting_type": "sales_call",
+  "company": "Meridian Freight",
+  "title": "Meridian Freight / Halden Logistics - Discovery Call",
+  "duration_minutes": 32,
+  "participants": ["Carlos Reyes", "Yuki Tanaka", "Linda Park", "Marcus Webb"],
+  "transcript": [
+    {"speaker": "Carlos Reyes", "text": "Thanks for the time today, Linda, Marcus. We'd love to understand what's driving you to look at a new freight visibility platform."},
+    {"speaker": "Linda Park", "text": "Our biggest pain is status visibility - right now we get shipment updates over email from three different carriers, in three different formats, and our ops team manually reconciles them into a spreadsheet twice a day."},
+    {"speaker": "Marcus Webb", "text": "From an IT side, we also want something that integrates with our existing warehouse management system rather than requiring double data entry."},
+    {"speaker": "Yuki Tanaka", "text": "Understood. On the visibility side, we support EDI 214 status updates from most major carriers, normalized into one feed. How many carriers do you work with today?"},
+    {"speaker": "Linda Park", "text": "Five regularly, plus a few spot carriers for overflow capacity."},
+    {"speaker": "Yuki Tanaka", "text": "We already integrate with four of your five regular carriers. The fifth we'd need to onboard, which typically takes two to three weeks if they support standard EDI."},
+    {"speaker": "Marcus Webb", "text": "On the WMS side, what integration options exist?"},
+    {"speaker": "Yuki Tanaka", "text": "We have a REST API and prebuilt webhooks for shipment events. I'd need to know which WMS you're running to say more specifically."},
+    {"speaker": "Marcus Webb", "text": "We're on a system called Freightline, custom-hosted."},
+    {"speaker": "Yuki Tanaka", "text": "I haven't personally integrated with Freightline before, so let me check with our integrations team on what's involved there rather than guess."},
+    {"speaker": "Carlos Reyes", "text": "We'll get back to you on that by early next week."},
+    {"speaker": "Linda Park", "text": "That's fair. Timeline-wise, we're hoping to have something live within two months - is that realistic?"},
+    {"speaker": "Carlos Reyes", "text": "If the Freightline integration is straightforward, yes. If it needs custom work, it could push closer to three months. We'll know more once Yuki checks."},
+    {"speaker": "Linda Park", "text": "Understood. One more thing - pricing. Can you send over your standard pricing tiers so we can start budgeting?"},
+    {"speaker": "Carlos Reyes", "text": "Absolutely, I'll send that over today."},
+    {"speaker": "Marcus Webb", "text": "And can we get a reference customer who's on a similar setup, ideally also using Freightline or something comparable?"},
+    {"speaker": "Carlos Reyes", "text": "I'll check who we can offer as a reference and follow up."},
+    {"speaker": "Linda Park", "text": "Great, let's plan to reconnect once you've looked into the Freightline question."},
+    {"speaker": "Carlos Reyes", "text": "Sounds good, thank you both."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Halden Logistics wants unified shipment visibility across five carriers instead of manually reconciling emails",
+      "Meridian already integrates with four of Halden's five carriers; the fifth would take two to three weeks to onboard",
+      "Halden's WMS is a custom-hosted system called Freightline, which Meridian hasn't integrated with before",
+      "Timeline depends on how complex the Freightline integration turns out to be"
+    ],
+    "action_items": [
+      {"owner": "Yuki Tanaka", "task": "Check with the integrations team on what's involved in integrating with Halden's Freightline WMS"},
+      {"owner": "Carlos Reyes", "task": "Send Halden standard pricing tiers today"},
+      {"owner": "Carlos Reyes", "task": "Find and offer a comparable reference customer to Halden"},
+      {"owner": "Carlos Reyes", "task": "Follow up with Halden early next week on the Freightline integration question"}
+    ],
+    "decisions": [
+      "Reconnect for a follow-up call once the Freightline integration is scoped"
+    ],
+    "open_questions": [
+      "How complex will integrating with Halden's custom-hosted Freightline WMS be, and will it fit the two-month timeline?",
+      "Which carrier is Halden's fifth, and will it support standard EDI for onboarding?"
+    ]
+  }
+}

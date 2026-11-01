@@ -1,0 +1,41 @@
+{
+  "meeting_id": "cascade-robotics-standup-01",
+  "meeting_type": "standup",
+  "company": "Cascade Robotics",
+  "title": "Cascade Robotics Standup - Firmware Bug Triage",
+  "duration_minutes": 10,
+  "participants": ["Mei Lin Chao", "Gustavo Ferreira", "Hannah Whitfield"],
+  "transcript": [
+    {"speaker": "Mei Lin Chao", "text": "Morning. Gustavo, what's the latest on the motor controller firmware bug?"},
+    {"speaker": "Gustavo Ferreira", "text": "Found it - it's a race condition in the PID loop when the encoder interrupt fires during a parameter update. Under load, the motor occasionally jerks for a fraction of a second."},
+    {"speaker": "Mei Lin Chao", "text": "That matches what we saw on unit 14 yesterday. Can you get a fix in today?"},
+    {"speaker": "Gustavo Ferreira", "text": "Yes, I'll add a lock around the parameter update and push a patch build by end of day."},
+    {"speaker": "Hannah Whitfield", "text": "Once you push it, I'll flash it to the three test units on the bench and run the stress rig overnight."},
+    {"speaker": "Mei Lin Chao", "text": "Good. Hannah, any update on the battery supplier?"},
+    {"speaker": "Hannah Whitfield", "text": "They confirmed the new cell shipment is delayed two weeks - customs hold. I'll email procurement today to see if we can expedite or find a backup supplier."},
+    {"speaker": "Mei Lin Chao", "text": "Two weeks pushes our demo unit assembly close to the deadline. Let's decide today, not later this week, whether we swap to the backup supplier if procurement can't expedite by Wednesday."},
+    {"speaker": "Gustavo Ferreira", "text": "Agreed, we can't afford to wait on that."},
+    {"speaker": "Mei Lin Chao", "text": "One open question - do we need to requalify the whole battery pack if we switch suppliers, or just the cells?"},
+    {"speaker": "Hannah Whitfield", "text": "Good question, I don't know off the top of my head - I'll ask the certification team."},
+    {"speaker": "Mei Lin Chao", "text": "Thanks both, that's it for today."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Found and will fix a race condition in the motor controller firmware",
+      "Overnight stress testing planned on three units once the patch lands",
+      "The new battery cell shipment is delayed two weeks by customs",
+      "The team will decide by Wednesday whether to switch battery suppliers"
+    ],
+    "action_items": [
+      {"owner": "Gustavo Ferreira", "task": "Fix the PID loop race condition and push a patch build by end of day"},
+      {"owner": "Hannah Whitfield", "task": "Flash the patch to the three test units and run an overnight stress test"},
+      {"owner": "Hannah Whitfield", "task": "Email procurement about expediting the battery cell shipment or finding a backup supplier"}
+    ],
+    "decisions": [
+      "Decide by Wednesday whether to switch to the backup battery supplier if procurement can't expedite"
+    ],
+    "open_questions": [
+      "Would switching battery suppliers require requalifying the whole pack, or just the cells?"
+    ]
+  }
+}

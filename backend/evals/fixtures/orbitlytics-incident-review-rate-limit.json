@@ -1,0 +1,43 @@
+{
+  "meeting_id": "orbitlytics-incident-review-rate-limit",
+  "meeting_type": "incident_review",
+  "company": "Orbitlytics",
+  "title": "Orbitlytics Incident Review - Rate Limiter False Positives",
+  "duration_minutes": 20,
+  "participants": ["Derek Osei", "Priya Nandakumar", "Jae-won Lee"],
+  "transcript": [
+    {"speaker": "Derek Osei", "text": "Let's review Tuesday's incident - several customers got throttled with 429s even though they were well under the documented limit."},
+    {"speaker": "Priya Nandakumar", "text": "Root cause was a bug in how we counted requests across our two API gateway nodes. Each node kept its own local count instead of a shared one, and the aggregation logic elsewhere read a stale merged count that was sometimes too high."},
+    {"speaker": "Jae-won Lee", "text": "Right - the shared count in Redis wasn't being refreshed on every request under high concurrency, there was a caching layer that held onto a stale value for up to 30 seconds. So a customer already using most of their quota looked like they'd blown through it."},
+    {"speaker": "Derek Osei", "text": "How many customers were affected and for how long?"},
+    {"speaker": "Priya Nandakumar", "text": "Fourteen customers saw at least one false 429 over a 40-minute window. Three of them were significant enough traffic that they filed support tickets."},
+    {"speaker": "Derek Osei", "text": "What's the fix?"},
+    {"speaker": "Jae-won Lee", "text": "Short term, I've already increased the refresh frequency on that cache from 30 seconds to 2 seconds, which is deployed and reduces the odds of a stale read a lot. Longer term, I think we should remove the cache layer entirely for rate limit counts and read directly from Redis, accepting the small latency cost."},
+    {"speaker": "Priya Nandakumar", "text": "I agree with removing the cache for correctness, but let's measure the latency impact first before deciding - if it adds real latency to every request, that's a tradeoff we should make deliberately, not by default."},
+    {"speaker": "Derek Osei", "text": "Agreed, let's decide that once we have real latency numbers, not today."},
+    {"speaker": "Jae-won Lee", "text": "I'll benchmark direct Redis reads under production-like load this week and bring numbers to the next sync."},
+    {"speaker": "Priya Nandakumar", "text": "I'll also add an alert so we catch anomalous 429 rates going forward instead of relying on customers reporting it."},
+    {"speaker": "Derek Osei", "text": "Good. Anything else?"},
+    {"speaker": "Priya Nandakumar", "text": "One open question - should we proactively credit or apologize to the three customers who filed tickets, or just respond to their tickets as normal?"},
+    {"speaker": "Derek Osei", "text": "Let me loop in support and decide that separately, not in this review."},
+    {"speaker": "Derek Osei", "text": "Thanks both, good root cause work."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "A stale Redis cache for shared rate-limit counts caused false 429 errors for fourteen customers over 40 minutes",
+      "The immediate fix increased the cache refresh frequency from 30 seconds to 2 seconds",
+      "Whether to remove the cache layer entirely depends on latency benchmarks not yet run",
+      "An alert for anomalous 429 rates will be added so future incidents are caught proactively"
+    ],
+    "action_items": [
+      {"owner": "Jae-won Lee", "task": "Benchmark direct Redis reads under production-like load and bring numbers to the next sync"},
+      {"owner": "Priya Nandakumar", "task": "Add an alert for anomalous 429 rates"}
+    ],
+    "decisions": [
+      "Decide whether to remove the rate-limit cache layer entirely only after seeing latency benchmark numbers"
+    ],
+    "open_questions": [
+      "Should the three customers who filed support tickets be proactively credited or apologized to?"
+    ]
+  }
+}

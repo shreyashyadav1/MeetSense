@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     allowed_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: list(DEFAULT_ALLOWED_ORIGINS)
     )
+    # slowapi limit spec for POST /api/meetings (e.g. "20/minute"). Keyed by
+    # client IP, so a single-host load test needs this raised to provision
+    # many meetings quickly; keep the default in production.
+    create_meeting_rate_limit: str = "20/minute"
     # Proxies whose X-Forwarded-For header is trusted for the client IP (rate
     # limits, per-IP socket caps). The backend runs behind Railway's edge or
     # nginx; restrict this to the proxy's address if uvicorn is ever exposed

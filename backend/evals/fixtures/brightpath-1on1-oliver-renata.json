@@ -1,0 +1,41 @@
+{
+  "meeting_id": "brightpath-1on1-oliver-renata",
+  "meeting_type": "one_on_one",
+  "company": "BrightPath Learning",
+  "title": "1:1 - Oliver Bennett & Renata Silva",
+  "duration_minutes": 20,
+  "participants": ["Oliver Bennett", "Renata Silva"],
+  "transcript": [
+    {"speaker": "Renata Silva", "text": "Let's talk through your growth - you've been asking about what it'd take to move to a senior engineer title."},
+    {"speaker": "Oliver Bennett", "text": "Yeah, I've been here just over a year and I feel like I've grown a lot, especially since owning the course builder feature mostly independently."},
+    {"speaker": "Renata Silva", "text": "I agree you've grown a lot. The course builder work has been solid, especially how you handled the cross-module drag complexity and made the tradeoff call to timebox it rather than over-engineering a solution."},
+    {"speaker": "Oliver Bennett", "text": "Thank you, that means a lot."},
+    {"speaker": "Renata Silva", "text": "For senior, though, I want to see more of you mentoring others and influencing technical direction beyond your own tickets, not just strong individual execution. Right now most of your impact is still scoped to what you're personally building."},
+    {"speaker": "Oliver Bennett", "text": "That's fair feedback. What would a concrete example look like?"},
+    {"speaker": "Renata Silva", "text": "For instance, the AI tutor guardrails work coming up - that touches both your work and eventually whatever engineer works on adaptive practice later. Taking the lead on documenting the guardrails approach so someone else could build on it, not just implementing it yourself, would be a good example."},
+    {"speaker": "Oliver Bennett", "text": "I can do that. Are there other areas you'd want me to focus on?"},
+    {"speaker": "Renata Silva", "text": "I'd also like to see you weigh in more in planning sessions - you were pretty quiet in the AI tutor scoping meeting even though you clearly had opinions on the guardrails scope."},
+    {"speaker": "Oliver Bennett", "text": "I'll work on speaking up more, that's a fair callout."},
+    {"speaker": "Renata Silva", "text": "Let's set a concrete timeline - if you lead the guardrails documentation well and speak up more in the next couple of planning sessions, let's revisit the senior title conversation in two months."},
+    {"speaker": "Oliver Bennett", "text": "That works for me, thank you for being direct about what's needed."},
+    {"speaker": "Renata Silva", "text": "One last thing - anything I should know about your workload or morale generally, separate from the promotion conversation?"},
+    {"speaker": "Oliver Bennett", "text": "Honestly it's fine, maybe a bit heavy with the AI tutor guardrails on top of course builder, but nothing urgent."},
+    {"speaker": "Renata Silva", "text": "Let's keep an eye on that too. Thanks Oliver."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Oliver is being considered for a senior engineer title after a year of solid, independent execution",
+      "The main gap for senior is mentoring and technical influence beyond his own tickets, not execution quality",
+      "Oliver will lead documentation of the AI tutor guardrails approach as a concrete example of broader influence",
+      "The senior title conversation will be revisited in two months"
+    ],
+    "action_items": [
+      {"owner": "Oliver Bennett", "task": "Lead documentation of the AI tutor guardrails approach so others can build on it"},
+      {"owner": "Oliver Bennett", "task": "Speak up more with his opinions in upcoming planning sessions"}
+    ],
+    "decisions": [
+      "Revisit the senior engineer title conversation in two months based on progress on mentoring and technical influence"
+    ],
+    "open_questions": []
+  }
+}

@@ -7,6 +7,7 @@ from weakref import WeakValueDictionary
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
+from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.models.schemas import CreateMeetingRequest, Meeting, MeetingInsights, TranscriptSegment
 from app.services.ai_service import (
@@ -46,7 +47,7 @@ async def _get_meeting_or_404(meeting_id: str) -> Meeting:
     status_code=status.HTTP_201_CREATED,
     summary="Create a new meeting",
 )
-@limiter.limit("20/minute")
+@limiter.limit(lambda: settings.create_meeting_rate_limit)
 async def create_meeting(request: Request, body: CreateMeetingRequest) -> Meeting:
     """Create a meeting in *active* status. The title is trimmed (1-120 characters)."""
     return await meeting_store.create_meeting(title=body.title)

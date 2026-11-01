@@ -1,0 +1,47 @@
+{
+  "meeting_id": "orbitlytics-planning-q3",
+  "meeting_type": "planning",
+  "company": "Orbitlytics",
+  "title": "Orbitlytics Q3 Roadmap Planning",
+  "duration_minutes": 30,
+  "participants": ["Derek Osei", "Priya Nandakumar", "Jae-won Lee", "Sofia Marchetti"],
+  "transcript": [
+    {"speaker": "Derek Osei", "text": "Thanks everyone for joining. Let's lock the Q3 roadmap today. Top of the list is the v2 onboarding flow, which is basically done - nice work. What's next after that ships?"},
+    {"speaker": "Priya Nandakumar", "text": "Two big candidates: the API redesign Jae-won's been pushing for, and expanding SSO support for enterprise customers. We can't do both in parallel with the current team size."},
+    {"speaker": "Jae-won Lee", "text": "The API redesign removes a lot of tech debt but it's not customer-visible. SSO is directly blocking three enterprise deals sales is working right now."},
+    {"speaker": "Derek Osei", "text": "How many deals exactly, and how big?"},
+    {"speaker": "Sofia Marchetti", "text": "I heard from sales it's three deals, combined around 400k in annual contract value, all blocked on SAML SSO specifically, not just OAuth."},
+    {"speaker": "Derek Osei", "text": "That settles it for me - SSO first. Let's prioritize SAML SSO support for Q3, and push the API redesign to Q4."},
+    {"speaker": "Priya Nandakumar", "text": "Agreed, that's the right call given the revenue on the table."},
+    {"speaker": "Jae-won Lee", "text": "I can start scoping SAML integration this week. I'd estimate five to six weeks for a solid implementation, including admin configuration UI."},
+    {"speaker": "Derek Osei", "text": "Sofia, can design get started on the SSO admin settings screen in parallel?"},
+    {"speaker": "Sofia Marchetti", "text": "Yes, I'll have wireframes ready within a week so Jae-won isn't blocked."},
+    {"speaker": "Priya Nandakumar", "text": "We should also budget time for at least one enterprise customer to pilot SSO before general availability - I don't want our first SAML integration tested only in-house."},
+    {"speaker": "Derek Osei", "text": "Good point. Let's pencil in a two-week pilot with one of the three deals once it's feature-complete, before we call it done."},
+    {"speaker": "Jae-won Lee", "text": "Makes sense. One open question - do we need to support both SP-initiated and IdP-initiated SSO flows, or just one? That changes scope meaningfully."},
+    {"speaker": "Derek Osei", "text": "I don't know off the top of my head. Let's find out from the three prospects which flow their IT teams actually require before we scope further."},
+    {"speaker": "Priya Nandakumar", "text": "I'll reach out to sales this week to get that from the prospects."},
+    {"speaker": "Derek Osei", "text": "Perfect. To summarize: SAML SSO is the Q3 priority, API redesign moves to Q4, and we'll pilot with a real customer before GA."},
+    {"speaker": "Derek Osei", "text": "Thanks all, good session."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "SAML SSO is prioritized for Q3 over the API redesign because it's blocking roughly $400k in enterprise deals",
+      "The API redesign is pushed to Q4",
+      "SSO implementation is estimated at five to six weeks including an admin configuration UI",
+      "A two-week customer pilot is planned before SSO general availability"
+    ],
+    "action_items": [
+      {"owner": "Jae-won Lee", "task": "Start scoping the SAML SSO integration this week"},
+      {"owner": "Sofia Marchetti", "task": "Deliver wireframes for the SSO admin settings screen within a week"},
+      {"owner": "Priya Nandakumar", "task": "Reach out to sales this week to find out which SSO flow the three prospects require"}
+    ],
+    "decisions": [
+      "Prioritize SAML SSO support for Q3 and push the API redesign to Q4",
+      "Pilot SSO with one enterprise customer for two weeks before general availability"
+    ],
+    "open_questions": [
+      "Do we need to support both SP-initiated and IdP-initiated SSO flows, or just one?"
+    ]
+  }
+}

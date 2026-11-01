@@ -10,11 +10,14 @@ Client → server
 
 Server → client: the models below, serialized with ``model_dump_json()``.
 Every ``error`` message is followed by a close frame with the code from
-``ERROR_POLICIES``.
+``ERROR_POLICIES``. ``transcript`` messages carry ``emitted_at`` (server wall
+clock, seconds since the Unix epoch) so a client can measure delivery latency;
+it is additive and ignored by clients that don't read it.
 """
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal
@@ -77,6 +80,7 @@ class StatusMessage(BaseModel):
 
 class TranscriptMessage(TranscriptSegment):
     type: Literal["transcript"] = "transcript"
+    emitted_at: float = Field(default_factory=time.time)
 
     @classmethod
     def from_segment(cls, segment: TranscriptSegment) -> TranscriptMessage:

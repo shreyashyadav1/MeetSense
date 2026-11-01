@@ -1,0 +1,43 @@
+{
+  "meeting_id": "meridian-planning-onboarding",
+  "meeting_type": "planning",
+  "company": "Meridian Freight",
+  "title": "Meridian Freight Internal Planning - Halden Logistics Onboarding",
+  "duration_minutes": 18,
+  "participants": ["Carlos Reyes", "Yuki Tanaka", "Noor Hassan"],
+  "transcript": [
+    {"speaker": "Carlos Reyes", "text": "Halden Logistics signed yesterday - congrats team. Let's plan their integration onboarding before the kickoff call Friday."},
+    {"speaker": "Yuki Tanaka", "text": "I already have their API requirements from the sales call - they need EDI 214 status updates and a webhook for shipment exceptions."},
+    {"speaker": "Noor Hassan", "text": "EDI 214 we support out of the box. The exception webhook is new - right now we only have a generic status-change webhook, not one filtered specifically to exceptions."},
+    {"speaker": "Carlos Reyes", "text": "Can we build the exception-specific webhook before their go-live date, which is three weeks out?"},
+    {"speaker": "Noor Hassan", "text": "Yes, that's a reasonable ask - I'll scope and build it, should take about a week and a half."},
+    {"speaker": "Yuki Tanaka", "text": "I'll draft the integration guide for their engineering team in the meantime so they can start on their side without waiting on us."},
+    {"speaker": "Carlos Reyes", "text": "Good. Let's also decide who owns the kickoff call Friday - I think Yuki should lead since she knows their requirements best, with me there for the relationship side."},
+    {"speaker": "Yuki Tanaka", "text": "Happy to lead it."},
+    {"speaker": "Noor Hassan", "text": "One open question - if Halden's webhook endpoint is briefly down when we try to deliver an exception event, do we need retry logic, or is fire-and-forget acceptable for v1?"},
+    {"speaker": "Carlos Reyes", "text": "I don't know what their engineering team expects there. Let's ask them directly on Friday's call."},
+    {"speaker": "Yuki Tanaka", "text": "Good, I'll add it to the kickoff agenda."},
+    {"speaker": "Carlos Reyes", "text": "Also - Halden mentioned wanting real-time GPS tracking eventually, but that's out of scope for this onboarding. I'll note it for the quarterly business review."},
+    {"speaker": "Carlos Reyes", "text": "Great, let's reconvene early next week to check progress on the exception webhook."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "Halden Logistics needs EDI 214 status updates, which are already supported, plus a new exception-specific webhook",
+      "The exception webhook will be built in about a week and a half, ahead of the three-week go-live",
+      "Yuki will lead Friday's kickoff call given her knowledge of Halden's requirements",
+      "Real-time GPS tracking is out of scope for this onboarding and deferred to a later phase"
+    ],
+    "action_items": [
+      {"owner": "Noor Hassan", "task": "Scope and build the shipment-exception webhook before the three-week go-live"},
+      {"owner": "Yuki Tanaka", "task": "Draft the integration guide for Halden's engineering team"},
+      {"owner": "Yuki Tanaka", "task": "Lead Friday's kickoff call with Halden Logistics"}
+    ],
+    "decisions": [
+      "Yuki will lead Friday's kickoff call, with Carlos present for the relationship side",
+      "Real-time GPS tracking is deferred to a later phase, not part of this onboarding"
+    ],
+    "open_questions": [
+      "Does the exception webhook need retry logic if Halden's endpoint is briefly down, or is fire-and-forget acceptable for v1?"
+    ]
+  }
+}

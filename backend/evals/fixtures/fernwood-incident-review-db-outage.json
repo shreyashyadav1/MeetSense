@@ -1,0 +1,48 @@
+{
+  "meeting_id": "fernwood-incident-review-db-outage",
+  "meeting_type": "incident_review",
+  "company": "Fernwood Health",
+  "title": "Fernwood Health Incident Review - Database Connection Pool Outage",
+  "duration_minutes": 22,
+  "participants": ["Ben Holloway", "Amara Okafor", "Liam Fitzgerald", "Ravi Chandrasekaran"],
+  "transcript": [
+    {"speaker": "Ben Holloway", "text": "Let's walk through yesterday's database outage. Amara, can you summarize the timeline?"},
+    {"speaker": "Amara Okafor", "text": "At 2:14pm the primary Postgres instance hit max connections and started rejecting new ones. The app couldn't get connections, so most API requests started failing with 500s. Ravi was on call and got paged at 2:17."},
+    {"speaker": "Ravi Chandrasekaran", "text": "I saw the connection pool exhaustion alert and initially thought it was a traffic spike, so I checked our load dashboards first - that cost a few minutes before I looked at connection counts directly."},
+    {"speaker": "Amara Okafor", "text": "Once we looked at pg_stat_activity, we found a batch job - the nightly claims export - had started running two hours late due to an unrelated scheduler issue, and it was holding open way more connections than expected, about 180 of our 200 max."},
+    {"speaker": "Liam Fitzgerald", "text": "That job normally runs at 2am when traffic is near zero. Because the scheduler issue pushed it into the 2pm window, it collided with peak traffic."},
+    {"speaker": "Ben Holloway", "text": "How did we resolve it?"},
+    {"speaker": "Ravi Chandrasekaran", "text": "I killed the claims export job's connections manually at 2:31, which freed up the pool, and things recovered within a couple minutes."},
+    {"speaker": "Amara Okafor", "text": "Total customer impact was about 17 minutes of elevated errors, roughly 2:14 to 2:31."},
+    {"speaker": "Ben Holloway", "text": "What's stopping this from happening again?"},
+    {"speaker": "Liam Fitzgerald", "text": "Two things - first, the scheduler issue that let the job run late needs fixing. Second, we should give that batch job its own dedicated, smaller connection pool so it can't starve the main application pool even if it does run at the wrong time."},
+    {"speaker": "Amara Okafor", "text": "I'll set up a separate connection pool for batch jobs this week."},
+    {"speaker": "Liam Fitzgerald", "text": "I'll dig into why the scheduler let the job run two hours late - that's a separate root cause we haven't explained yet."},
+    {"speaker": "Ben Holloway", "text": "Ravi, for you - let's shorten the time to diagnosis. Should we add a runbook step to check connection counts before load dashboards for this alert type?"},
+    {"speaker": "Ravi Chandrasekaran", "text": "Yes, I'll update the on-call runbook with that ordering."},
+    {"speaker": "Ben Holloway", "text": "One open question - do we need a hard timeout on batch jobs so a stuck one can't hold connections indefinitely, regardless of pool size?"},
+    {"speaker": "Amara Okafor", "text": "That's worth doing but I want to check with Liam whether the claims export can safely be killed mid-run without leaving data in a bad state."},
+    {"speaker": "Liam Fitzgerald", "text": "I'll check that as part of my investigation."},
+    {"speaker": "Ben Holloway", "text": "Okay, thanks all - let's reconvene once these are done to confirm we're covered."}
+  ],
+  "ground_truth": {
+    "summary_key_points": [
+      "A late-running nightly batch job exhausted the database connection pool during peak traffic, causing about 17 minutes of elevated errors",
+      "The batch job ran two hours late due to an unrelated scheduler issue that still needs root-causing",
+      "The fix includes a dedicated connection pool for batch jobs, separate from the main application pool",
+      "The on-call runbook will be updated to check connection counts earlier in this type of incident"
+    ],
+    "action_items": [
+      {"owner": "Amara Okafor", "task": "Set up a separate, smaller connection pool for batch jobs this week"},
+      {"owner": "Liam Fitzgerald", "task": "Investigate why the scheduler let the claims export job run two hours late"},
+      {"owner": "Ravi Chandrasekaran", "task": "Update the on-call runbook to check connection counts before load dashboards for this alert type"},
+      {"owner": "Liam Fitzgerald", "task": "Check whether the claims export job can safely be killed mid-run without leaving data in a bad state"}
+    ],
+    "decisions": [
+      "Give the nightly batch job its own dedicated connection pool separate from the main application pool"
+    ],
+    "open_questions": [
+      "Should batch jobs get a hard timeout so a stuck one can't hold connections indefinitely, regardless of pool size?"
+    ]
+  }
+}
